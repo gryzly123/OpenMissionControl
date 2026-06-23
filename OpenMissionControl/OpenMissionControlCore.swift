@@ -16,6 +16,42 @@ import SwiftUI
 @_silgen_name("CoreDockSendNotification")
 func CoreDockSendNotification(_ notification: CFString, _ unknown: Int32) -> CGError
 
+protocol DisplayNameable {
+    var displayName: String { get }
+}
+
+enum WindowAction: Int, CaseIterable, DisplayNameable {
+    case none = 0
+    case minimize = 1
+    case zoom = 2
+    case close = 3
+    case quit = 4
+
+    var displayName: String {
+        switch self {
+        case .none: return "None"
+        case .minimize: return "Minimize"
+        case .zoom: return "Maximize"
+        case .close: return "Close"
+        case .quit: return "Quit"
+        }
+    }
+}
+
+enum Instigator: Int, CaseIterable, DisplayNameable {
+    case overlay
+    case keyboard
+    case mouse
+
+    var displayName: String {
+        switch self {
+        case .overlay: return "Overlay Click"
+        case .keyboard: return "Keyboard Shortcut"
+        case .mouse: return "Mouse Shortcut"
+        }
+    }
+}
+
 final class OpenMissionControlCore: ObservableObject {
     static let shared = OpenMissionControlCore()
     private let logger = Logger(
@@ -31,6 +67,8 @@ final class OpenMissionControlCore: ObservableObject {
     @AppStorage("shortcutClose") private var shortcutClose: Bool = false
     @AppStorage("shortcutMinimize") private var shortcutMinimize: Bool = false
     @AppStorage("shortcutMaximize") private var shortcutMaximize: Bool = false
+    @AppStorage("rightClickAction") private var rightClickAction: WindowAction = .none
+    @AppStorage("middleClickAction") private var middleClickAction: WindowAction = .none
 
     // MARK: - Lifecycle
 
@@ -64,11 +102,11 @@ final class OpenMissionControlCore: ObservableObject {
         MissionControlMonitor.shared.start()
 
         // Configure mouse event monitor
-        MouseEventMonitor.shared.setClickHandler { [weak self] location in
+        MouseEventMonitor.shared.setClickHandler { [weak self] location, button in
             guard let self = self else { return true }
 
-            self.logger.debug("Mouse clicked at: \(location.x), \(location.y)")
-            return self.handleMouseClick(at: location)
+            self.logger.debug("Mouse clicked at: \(location.x), \(location.y) (button: \(button.rawValue))")
+            return self.handleMouseClick(at: location, with: button)
         }
         MouseEventMonitor.shared.setMoveHandler { [weak self] location in
             guard let self = self else { return }
@@ -136,18 +174,38 @@ final class OpenMissionControlCore: ObservableObject {
     // MARK: - Mouse Event Handling
 
     @discardableResult
-    private func handleMouseClick(at location: CGPoint) -> Bool {
+    private func handleMouseClick(at location: CGPoint, with button: CGMouseButton) -> Bool {
         guard isOverlayShown else { return true }
 
         if let rect = overlayRect, rect.contains(location) {
-            logger.debug("Captured left click inside overlayRect at (\(location.x), \(location.y))")
-            handleOverlayClick(at: location)
-            return false
+            if button == .left {
+                logger.debug("Captured left click inside overlayRect at (\(location.x), \(location.y)).")
+                handleOverlayClick(at: location)
+                return false
+            } else {
+                logger.debug("Captured non-left click inside overlayRect at (\(location.x), \(location.y)), skipping.")
+                return true
+            }
         }
 
-        if hoveredWindow != nil {
-            logger.debug("Captured left click on hovered window at (\(location.x), \(location.y))")
-            hideOverlay()
+        if let window = hoveredWindow {
+            switch(button) {
+            case .left:
+                logger.debug("Captured left click on hovered window at (\(location.x), \(location.y)).")
+                hideOverlay()
+                return true
+            case .right:
+                logger.debug("Captured right click on hovered window at (\(location.x), \(location.y)).")
+                performWindowAction(window: window, action: rightClickAction, instigator: .mouse)
+                return rightClickAction == .none
+            case .center:
+                logger.debug("Captured middle click on hovered window at (\(location.x), \(location.y)).")
+                performWindowAction(window: window, action: middleClickAction, instigator: .mouse)
+                return middleClickAction == .none
+            default:
+                logger.debug("Captured non-default click (id \(button.rawValue)) on hovered window at (\(location.x), \(location.y)), skipping.")
+                return true
+            }
         }
 
         return true
@@ -165,33 +223,25 @@ final class OpenMissionControlCore: ObservableObject {
         // Check for Command key
         guard flags.contains(.maskCommand) else { return true }
 
-        let windowName = window[kCGWindowName as String] as? String ?? ""
-
         switch keyCode {
         case 12: // Q
             if shortcutQuit {
-                logger.info("Shortcut Quit triggered on window: \(windowName)")
-                quitApplication(window: window)
+                performWindowAction(window: window, action: .quit, instigator: .keyboard)
                 return false
             }
         case 13: // W
             if shortcutClose {
-                logger.info("Shortcut Close triggered on window: \(windowName)")
-                performWindowAction(window: window, action: kAXCloseButtonAttribute)
+                performWindowAction(window: window, action: .close, instigator: .keyboard)
                 return false
             }
         case 46: // M
             if shortcutMinimize {
-                logger.info("Shortcut Minimize triggered on window: \(windowName)")
-                performWindowAction(window: window, action: kAXMinimizeButtonAttribute)
+                performWindowAction(window: window, action: .minimize, instigator: .keyboard)
                 return false
             }
         case 3: // F
             if shortcutMaximize {
-                logger.info("Shortcut Maximize triggered on window: \(windowName)")
-                _ = CoreDockSendNotification("com.apple.expose.awake" as CFString, 0)
-                hideOverlay()
-                performWindowAction(window: window, action: kAXZoomButtonAttribute)
+                performWindowAction(window: window, action: .zoom, instigator: .keyboard)
                 return false
             }
         default:
@@ -279,11 +329,18 @@ final class OpenMissionControlCore: ObservableObject {
                         NSScreen.screens.first?.frame.height ?? NSScreen.main?.frame.height ?? 0
                     let convertedY = screenHeight - y - 40
 
-                    let newFrame = NSRect(x: x + 8, y: convertedY - 8, width: 104, height: 40)
+                    let showQuit = UserDefaults.standard.object(forKey: "showQuitButton") as? Bool ?? false
+                    let showClose = UserDefaults.standard.object(forKey: "showCloseButton") as? Bool ?? true
+                    let showMinimize = UserDefaults.standard.object(forKey: "showMinimizeButton") as? Bool ?? true
+                    let showZoom = UserDefaults.standard.object(forKey: "showZoomButton") as? Bool ?? true
+                    let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }.count
+                    let overlayWidth = CGFloat(12 + buttonCount * 32)
+
+                    let newFrame = NSRect(x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40)
                     overlayWindow?.setFrame(newFrame, display: true)
                     overlayWindow?.orderFront(nil)
 
-                    let cgOverlayRect = CGRect(x: x + 8, y: y + 8, width: 104, height: 40)
+                    let cgOverlayRect = CGRect(x: x + 8, y: y + 8, width: overlayWidth, height: 40)
                     overlayRect = cgOverlayRect
                     hoveredWindow = windowInfo
 
@@ -309,46 +366,59 @@ final class OpenMissionControlCore: ObservableObject {
             UserDefaults.standard.object(forKey: "showMinimizeButton") as? Bool ?? true
         let showZoom = UserDefaults.standard.object(forKey: "showZoomButton") as? Bool ?? true
 
-        let windowName = window[kCGWindowName as String] as? String ?? ""
-
         if showQuit {
             if localX >= currentX, localX <= currentX + 24 {
-                logger.info("Quit button clicked on window: \(windowName)")
-                quitApplication(window: window)
+                performWindowAction(window: window, action: .quit, instigator: .overlay)
             }
             currentX += 32
         }
 
         if showClose {
             if localX >= currentX, localX <= currentX + 24 {
-                logger.info("Close button clicked on window: \(windowName)")
-                performWindowAction(window: window, action: kAXCloseButtonAttribute)
+                performWindowAction(window: window, action: .close, instigator: .overlay)
             }
             currentX += 32
         }
 
         if showMinimize {
             if localX >= currentX, localX <= currentX + 24 {
-                logger.info("Minimize button clicked on window: \(windowName)")
-                performWindowAction(window: window, action: kAXMinimizeButtonAttribute)
+                performWindowAction(window: window, action: .minimize, instigator: .overlay)
             }
             currentX += 32
         }
 
         if showZoom {
             if localX >= currentX, localX <= currentX + 24 {
-                logger.info("Zoom button clicked on window: \(windowName)")
-
-                _ = CoreDockSendNotification("com.apple.expose.awake" as CFString, 0)
-                hideOverlay()
-
-                performWindowAction(window: window, action: kAXZoomButtonAttribute)
+                performWindowAction(window: window, action: .zoom, instigator: .overlay)
             }
             currentX += 32
         }
     }
 
-    private func performWindowAction(window: [String: Any], action: String) {
+    private func performWindowAction(window: [String: Any], action: WindowAction, instigator: Instigator) {
+        let windowName = window[kCGWindowName as String] as? String ?? ""
+
+        switch(action) {
+        case .quit:
+            logger.info("\(instigator.displayName) Quit triggered on window: \(windowName)")
+            quitApplication(window: window)
+        case .minimize:
+            logger.info("\(instigator.displayName) Minimize triggered on window: \(windowName)")
+            performOSWindowAction(window: window, action: kAXMinimizeButtonAttribute)
+        case .zoom:
+            logger.info("\(instigator.displayName) Maximize triggered on window: \(windowName)")
+            _ = CoreDockSendNotification("com.apple.expose.awake" as CFString, 0)
+            hideOverlay()
+            performOSWindowAction(window: window, action: kAXZoomButtonAttribute)
+        case .close:
+            logger.info("\(instigator.displayName) Close triggered on window: \(windowName)")
+            performOSWindowAction(window: window, action: kAXCloseButtonAttribute)
+        default:
+            break
+        }
+    }
+
+    private func performOSWindowAction(window: [String: Any], action: String) {
         guard let pid = window[kCGWindowOwnerPID as String] as? pid_t,
               let windowID = window[kCGWindowNumber as String] as? CGWindowID
         else {

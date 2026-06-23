@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-enum OverlayTheme: String, CaseIterable {
+enum OverlayTheme: String, CaseIterable, DisplayNameable {
     case `default`
     case minimal
     case coloredMinimal

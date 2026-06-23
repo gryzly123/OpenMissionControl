@@ -10,6 +10,22 @@ import Combine
 import OSLog
 import SwiftUI
 
+// MARK: - Icon color gradient builders
+
+private func solidColor(color: Color) -> LinearGradient {
+    return LinearGradient(
+        colors: [color.opacity(0.85), color], startPoint: .top,
+        endPoint: .bottom
+    )
+}
+
+private let rainbowColor = LinearGradient(
+   colors: [
+        Color.red, Color.orange, Color.yellow, Color.green,
+        Color.blue, Color.purple,
+    ], startPoint: .top, endPoint: .bottom
+)
+
 // MARK: - Accessibility Row
 
 struct AccessibilityRow: View {
@@ -71,17 +87,17 @@ struct AccessibilityRow: View {
 
 struct SettingToggleRow: View {
     let icon: String?
-    let iconColor: Color
+    let iconColor: LinearGradient
     let title: String
     let subtitle: String?
     @Binding var isOn: Bool
 
     init(
-        icon: String? = nil, iconColor: Color = .blue, title: String, subtitle: String? = nil,
+        icon: String? = nil, iconColor: LinearGradient? = nil, title: String, subtitle: String? = nil,
         isOn: Binding<Bool>
     ) {
         self.icon = icon
-        self.iconColor = iconColor
+        self.iconColor = iconColor ?? solidColor(color: .blue)
         self.title = title
         self.subtitle = subtitle
         _isOn = isOn
@@ -92,12 +108,7 @@ struct SettingToggleRow: View {
             if let icon {
                 ZStack {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [iconColor.opacity(0.85), iconColor], startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .fill(iconColor)
                         .frame(width: 28, height: 28)
                     Image(systemName: icon)
                         .font(.system(size: 13, weight: .semibold))
@@ -126,6 +137,56 @@ struct SettingToggleRow: View {
         .padding(.vertical, 8)
     }
 }
+
+struct SettingPickerRow<Value>: View where Value: Hashable & CaseIterable & DisplayNameable {
+    let icon: String?
+    let iconColor: LinearGradient
+    let title: String
+    @Binding var selectedValue: Value
+
+    init(
+        icon: String? = nil, iconColor: LinearGradient? = nil, title: String,
+        selectedValue: Binding<Value>
+    ) {
+        self.icon = icon
+        self.iconColor = iconColor ?? solidColor(color: .blue)
+        self.title = title
+        _selectedValue = selectedValue
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let icon {
+                ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(iconColor)
+                    .frame(width: 28, height: 28)
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+            }
+
+            Spacer()
+
+            Picker("", selection: $selectedValue) {
+                ForEach(Array(Value.allCases), id: \.self) { value in
+                    Text(value.displayName).tag(value)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 100)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+}
+
 
 // MARK: - Section Card
 
@@ -168,6 +229,8 @@ struct SettingsView: View {
     @AppStorage("shortcutClose") private var shortcutClose: Bool = false
     @AppStorage("shortcutMinimize") private var shortcutMinimize: Bool = false
     @AppStorage("shortcutMaximize") private var shortcutMaximize: Bool = false
+    @AppStorage("rightClickAction") private var rightClickAction: WindowAction = .none
+    @AppStorage("middleClickAction") private var middleClickAction: WindowAction = .none
 
     @State private var launchAtLogin: Bool = LaunchAtLoginManager.isEnabled
     private let logger = Logger(
@@ -258,46 +321,18 @@ struct SettingsView: View {
                     sectionHeader("Overlay")
 
                     SettingsCard {
-                        HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.red, Color.orange, Color.yellow, Color.green,
-                                                Color.blue, Color.purple,
-                                            ], startPoint: .top, endPoint: .bottom
-                                        )
-                                    )
-                                    .frame(width: 28, height: 28)
-                                Image(systemName: "paintpalette.fill")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("Theme")
-                                    .font(.system(size: 13, weight: .medium))
-                            }
-
-                            Spacer()
-
-                            Picker("", selection: $currentTheme) {
-                                ForEach(OverlayTheme.allCases, id: \.self) { theme in
-                                    Text(theme.displayName).tag(theme)
-                                }
-                            }
-                            .labelsHidden()
-                            .frame(width: 100)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        SettingPickerRow<OverlayTheme>(
+                            icon: "paintpalette.fill",
+                            iconColor: rainbowColor,
+                            title: "Theme",
+                            selectedValue: $currentTheme
+                        )
 
                         SettingsDivider()
 
                         SettingToggleRow(
                             icon: "power",
-                            iconColor: .purple,
+                            iconColor: solidColor(color: .purple),
                             title: "Quit Button",
                             isOn: $showQuitButton
                         )
@@ -306,7 +341,7 @@ struct SettingsView: View {
 
                         SettingToggleRow(
                             icon: "xmark",
-                            iconColor: .red,
+                            iconColor: solidColor(color: .red),
                             title: "Close Button",
                             isOn: $showCloseButton
                         )
@@ -315,7 +350,7 @@ struct SettingsView: View {
 
                         SettingToggleRow(
                             icon: "minus",
-                            iconColor: .yellow,
+                            iconColor: solidColor(color: .yellow),
                             title: "Minimize Button",
                             isOn: $showMinimizeButton
                         )
@@ -324,7 +359,7 @@ struct SettingsView: View {
 
                         SettingToggleRow(
                             icon: "arrow.up.backward.and.arrow.down.forward",
-                            iconColor: .green,
+                            iconColor: solidColor(color: .green),
                             title: "Maximize Button",
                             isOn: $showZoomButton
                         )
@@ -354,14 +389,13 @@ struct SettingsView: View {
                     }
                 }
 
-                // MARK: Shortcuts
+                // MARK: Keyboard Shortcuts
 
                 VStack(alignment: .leading, spacing: 6) {
-                    sectionHeader("Shortcuts")
+                    sectionHeader("Keyboard Shortcuts")
 
                     SettingsCard {
                         SettingToggleRow(
-                            iconColor: .purple,
                             title: "Quit (⌘Q)",
                             isOn: $shortcutQuit
                         )
@@ -369,7 +403,6 @@ struct SettingsView: View {
                         SettingsDivider()
 
                         SettingToggleRow(
-                            iconColor: .red,
                             title: "Close (⌘W)",
                             isOn: $shortcutClose
                         )
@@ -377,7 +410,6 @@ struct SettingsView: View {
                         SettingsDivider()
 
                         SettingToggleRow(
-                            iconColor: .yellow,
                             title: "Minimize (⌘M)",
                             isOn: $shortcutMinimize
                         )
@@ -385,9 +417,28 @@ struct SettingsView: View {
                         SettingsDivider()
 
                         SettingToggleRow(
-                            iconColor: .green,
                             title: "Maximize (⌘F)",
                             isOn: $shortcutMaximize
+                        )
+                    }
+                }
+
+                // MARK: Mouse Shortcuts
+
+                VStack(alignment: .leading, spacing: 6) {
+                    sectionHeader("Mouse Shortcuts")
+
+                    SettingsCard {
+                        SettingPickerRow<WindowAction>(
+                            title: "Right-click action",
+                            selectedValue: $rightClickAction
+                        )
+
+                        SettingsDivider()
+
+                        SettingPickerRow<WindowAction>(
+                            title: "Middle-click action",
+                            selectedValue: $middleClickAction
                         )
                     }
                 }
