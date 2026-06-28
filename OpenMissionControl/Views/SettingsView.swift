@@ -231,6 +231,8 @@ struct SettingsView: View {
     @AppStorage("shortcutMaximize") private var shortcutMaximize: Bool = false
     @AppStorage("rightClickAction") private var rightClickAction: WindowAction = .none
     @AppStorage("middleClickAction") private var middleClickAction: WindowAction = .none
+    @AppStorage("showAppIcons") private var showAppIcons: Bool = true
+    @AppStorage("iconOverlaySize") private var iconOverlaySize: Double = 64
 
     @State private var launchAtLogin: Bool = LaunchAtLoginManager.isEnabled
     private let logger = Logger(
@@ -363,6 +365,38 @@ struct SettingsView: View {
                             title: "Maximize Button",
                             isOn: $showZoomButton
                         )
+
+                        SettingsDivider()
+
+                        SettingToggleRow(
+                            icon: "app.fill",
+                            iconColor: solidColor(color: .blue),
+                            title: "App Icons",
+                            subtitle: "Show app icons on window thumbnails",
+                            isOn: $showAppIcons
+                        )
+                        .onChange(of: showAppIcons) { _ in
+                            OpenMissionControlCore.shared.refreshIconOverlayVisibility()
+                        }
+
+                        if showAppIcons {
+                            SettingsDivider()
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Icon Size")
+                                        .font(.system(size: 13, weight: .medium))
+                                    Spacer()
+                                    Text("\(Int(iconOverlaySize)) pt")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Slider(value: $iconOverlaySize, in: 32 ... 128, step: 4)
+                                    .controlSize(.small)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                        }
                     }
                 }
 

@@ -60,8 +60,10 @@ final class OpenMissionControlCore: ObservableObject {
 
     // MARK: - Window State
 
-    private var windows: [[String: Any]] = []
+    @Published private(set) var trackedWindows: [TrackedWindow] = []
+    let iconCache = AppIconCache()
     private var windowFetchTimer: Timer?
+    @AppStorage("showAppIcons") private var showAppIcons: Bool = true
     @AppStorage("updateDuration") private var updateDuration: Double = 0.25
     @AppStorage("shortcutQuit") private var shortcutQuit: Bool = false
     @AppStorage("shortcutClose") private var shortcutClose: Bool = false
@@ -166,9 +168,8 @@ final class OpenMissionControlCore: ObservableObject {
     @objc private func activeSpaceDidChange() {
         guard isOverlayShown else { return }
 
-        logger.info("Active space changed, recreating windows and overlay.")
-
-        recreateOverlay()
+        logger.info("Active space changed, hiding icons until transition completes.")
+        beginIconOverlaySpaceTransition()
     }
 
     // MARK: - Mouse Event Handling
@@ -268,30 +269,63 @@ final class OpenMissionControlCore: ObservableObject {
             ($0[kCGWindowOwnerName as String] as? String) != "Dock"
         }
 
+        let tracked = regularWindows.compactMap { TrackedWindow(from: $0) }
+
         DispatchQueue.main.async {
-            let areEqual = NSArray(array: self.windows).isEqual(to: regularWindows)
-            if !areEqual {
-                // Debug output
-                self.logger.debug("=== Windows (\(filteredWindows.count)) ===")
-                for (index, window) in filteredWindows.enumerated() {
-                    let name = window[kCGWindowName as String] as? String ?? "Unknown"
-                    let owner = window[kCGWindowOwnerName as String] as? String ?? "Unknown"
-                    let bounds = window[kCGWindowBounds as String] as? [String: CGFloat] ?? [:]
+            if self.trackedWindows != tracked {
+                let previous = self.trackedWindows
+
+                if self.isIconOverlaySuppressed {
+                    if !previous.isEmpty, !self.hasLargeBoundsChange(from: previous, to: tracked) {
+                        self.trackedWindows = tracked
+                        self.finishIconOverlaySpaceTransition()
+                        return
+                    }
+                } else if !previous.isEmpty, self.hasLargeBoundsChange(from: previous, to: tracked) {
+                    self.beginIconOverlaySpaceTransition()
+                }
+
+                self.logger.debug("=== Windows (\(tracked.count)) ===")
+                for (index, window) in tracked.enumerated() {
                     self.logger.debug(
-                        "[\(index)] \(owner) - \(name) | bounds: \(String(describing: bounds))"
+                        "[\(index)] \(window.ownerName) - \(window.title) | bounds: \(String(describing: window.bounds))"
                     )
                 }
 
-                self.windows = regularWindows
+                self.trackedWindows = tracked
+            }
+
+            guard !self.isIconOverlaySuppressed else { return }
+
+            self.updateIconOverlayFrame()
+        }
+    }
+
+    private func hasLargeBoundsChange(from old: [TrackedWindow], to new: [TrackedWindow]) -> Bool {
+        let oldById = Dictionary(uniqueKeysWithValues: old.map { ($0.windowNumber, $0) })
+
+        for window in new {
+            guard let previous = oldById[window.windowNumber] else { continue }
+
+            let deltaX = abs(previous.bounds.midX - window.bounds.midX)
+            let deltaY = abs(previous.bounds.midY - window.bounds.midY)
+            if deltaX > 20 || deltaY > 20 {
+                return true
             }
         }
+
+        return false
     }
 
     // MARK: - Overlay Management
 
     private var overlayWindow: NSWindow?
+    private var iconOverlayWindow: NSWindow?
+    private var iconOverlayResumeTimer: Timer?
+    private var isIconOverlaySuppressed = false
+    private static let spaceTransitionIconDelay: TimeInterval = 0.1
     private(set) var overlayRect: CGRect?
-    private(set) var hoveredWindow: [String: Any]?
+    @Published private(set) var hoveredWindow: TrackedWindow?
 
     @Published private(set) var isOverlayShown: Bool = false
     @Published private(set) var isOverlayHovered: Bool = false
@@ -310,24 +344,14 @@ final class OpenMissionControlCore: ObservableObject {
             }
 
             // Find window under mouse
-            for windowInfo in windows {
-                guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: CGFloat],
-                      let x = boundsDict["X"],
-                      let y = boundsDict["Y"],
-                      let width = boundsDict["Width"],
-                      let height = boundsDict["Height"]
-                else {
-                    continue
-                }
-
-                let windowFrame = CGRect(x: x, y: y, width: width, height: height)
+            for window in trackedWindows {
+                let windowFrame = window.bounds
 
                 // Check if mouse is within this window's bounds
                 if windowFrame.contains(mouseLocation) {
-                    // Convert CG top-left coordinates to NSWindow bottom-left coordinates
-                    let screenHeight =
-                        NSScreen.screens.first?.frame.height ?? NSScreen.main?.frame.height ?? 0
-                    let convertedY = screenHeight - y - 40
+                    let x = windowFrame.origin.x
+                    let y = windowFrame.origin.y
+                    let convertedY = ScreenCoordinates.cgTopLeftToAppKitBottomLeft(cgY: y, height: 40)
 
                     let showQuit = UserDefaults.standard.object(forKey: "showQuitButton") as? Bool ?? false
                     let showClose = UserDefaults.standard.object(forKey: "showCloseButton") as? Bool ?? true
@@ -342,9 +366,10 @@ final class OpenMissionControlCore: ObservableObject {
 
                     let cgOverlayRect = CGRect(x: x + 8, y: y + 8, width: overlayWidth, height: 40)
                     overlayRect = cgOverlayRect
-                    hoveredWindow = windowInfo
+                    hoveredWindow = window
 
                     overlayWindow?.orderFront(nil)
+                    orderIconOverlayBelowActionOverlay()
                     return
                 }
             }
@@ -395,8 +420,8 @@ final class OpenMissionControlCore: ObservableObject {
         }
     }
 
-    private func performWindowAction(window: [String: Any], action: WindowAction, instigator: Instigator) {
-        let windowName = window[kCGWindowName as String] as? String ?? ""
+    private func performWindowAction(window: TrackedWindow, action: WindowAction, instigator: Instigator) {
+        let windowName = window.title
 
         switch(action) {
         case .quit:
@@ -418,13 +443,9 @@ final class OpenMissionControlCore: ObservableObject {
         }
     }
 
-    private func performOSWindowAction(window: [String: Any], action: String) {
-        guard let pid = window[kCGWindowOwnerPID as String] as? pid_t,
-              let windowID = window[kCGWindowNumber as String] as? CGWindowID
-        else {
-            logger.error("Failed to get PID or WindowID for window: \(window)")
-            return
-        }
+    private func performOSWindowAction(window: TrackedWindow, action: String) {
+        let pid = window.pid
+        let windowID = window.windowNumber
 
         let app = AXUIElementCreateApplication(pid)
         let windows = (try? app.windows()) ?? []
@@ -458,11 +479,8 @@ final class OpenMissionControlCore: ObservableObject {
         )
     }
 
-    private func quitApplication(window: [String: Any]) {
-        guard let pid = window[kCGWindowOwnerPID as String] as? pid_t else {
-            logger.error("Failed to get PID for window: \(window)")
-            return
-        }
+    private func quitApplication(window: TrackedWindow) {
+        let pid = window.pid
 
         if let app = NSRunningApplication(processIdentifier: pid) {
             app.terminate()
@@ -496,6 +514,8 @@ final class OpenMissionControlCore: ObservableObject {
             overlayWindow = window
         }
 
+        showIconOverlay()
+
         // Start mouse monitoring when overlay is visible
         MouseEventMonitor.shared.start()
 
@@ -508,15 +528,120 @@ final class OpenMissionControlCore: ObservableObject {
     func hideOverlay() {
         windowFetchTimer?.invalidate()
         windowFetchTimer = nil
+        iconOverlayResumeTimer?.invalidate()
+        iconOverlayResumeTimer = nil
+        isIconOverlaySuppressed = false
         overlayWindow?.orderOut(nil)
+        hideIconOverlay()
+        trackedWindows = []
         MouseEventMonitor.shared.stop()
     }
 
     func recreateOverlay() {
         overlayWindow?.close()
         overlayWindow = nil
+        iconOverlayWindow?.close()
+        iconOverlayWindow = nil
 
         showOverlay()
+    }
+
+    // MARK: - Icon Overlay Management
+
+    private func showIconOverlay() {
+        guard showAppIcons, !isIconOverlaySuppressed else { return }
+
+        let unionFrame = ScreenCoordinates.unionFrame
+
+        if iconOverlayWindow == nil {
+            let window = NSWindow(
+                contentRect: unionFrame,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false
+            )
+            window.level = .screenSaver
+            window.backgroundColor = .clear
+            window.isOpaque = false
+            window.ignoresMouseEvents = true
+            window.isReleasedWhenClosed = false
+            window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+            window.contentView = NSHostingView(rootView: WindowIconsOverlayView(core: self))
+            iconOverlayWindow = window
+        }
+
+        iconOverlayWindow?.setFrame(unionFrame, display: true)
+        iconOverlayWindow?.orderFront(nil)
+        orderIconOverlayBelowActionOverlay()
+    }
+
+    private func hideIconOverlay() {
+        iconOverlayResumeTimer?.invalidate()
+        iconOverlayResumeTimer = nil
+        iconOverlayWindow?.orderOut(nil)
+        iconOverlayWindow?.close()
+        iconOverlayWindow = nil
+        iconCache.clear()
+    }
+
+    private func beginIconOverlaySpaceTransition() {
+        guard showAppIcons, iconOverlayWindow != nil || isOverlayShown else { return }
+
+        isIconOverlaySuppressed = true
+        iconOverlayWindow?.orderOut(nil)
+        scheduleIconOverlayResume()
+    }
+
+    private func scheduleIconOverlayResume() {
+        iconOverlayResumeTimer?.invalidate()
+        iconOverlayResumeTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.spaceTransitionIconDelay,
+            repeats: false
+        ) { [weak self] _ in
+            self?.finishIconOverlaySpaceTransition()
+        }
+    }
+
+    private func finishIconOverlaySpaceTransition() {
+        iconOverlayResumeTimer?.invalidate()
+        iconOverlayResumeTimer = nil
+
+        guard isOverlayShown else {
+            isIconOverlaySuppressed = false
+            return
+        }
+
+        isIconOverlaySuppressed = false
+        showIconOverlay()
+        updateIconOverlayFrame()
+
+        if let mouseLocation = CGEvent(source: nil)?.location {
+            updateOverlay(at: mouseLocation)
+        }
+    }
+
+    private func updateIconOverlayFrame() {
+        guard iconOverlayWindow != nil, showAppIcons else { return }
+
+        let unionFrame = ScreenCoordinates.unionFrame
+        iconOverlayWindow?.setFrame(unionFrame, display: true)
+        orderIconOverlayBelowActionOverlay()
+    }
+
+    private func orderIconOverlayBelowActionOverlay() {
+        guard let iconOverlayWindow, let overlayWindow else { return }
+
+        iconOverlayWindow.order(.below, relativeTo: overlayWindow.windowNumber)
+    }
+
+    func refreshIconOverlayVisibility() {
+        guard isOverlayShown else { return }
+
+        if showAppIcons {
+            showIconOverlay()
+        } else {
+            hideIconOverlay()
+        }
     }
 
     private func restartApp() {
