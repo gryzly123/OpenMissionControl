@@ -17,7 +17,7 @@ class MouseEventMonitor {
 
     // MARK: - Types
 
-    typealias ClickHandler = (_ location: CGPoint) -> Bool
+    typealias ClickHandler = (_ location: CGPoint, _ buttonCode: CGMouseButton) -> Bool
     typealias MoveHandler = (_ location: CGPoint) -> Void
     typealias KeyHandler = (_ flags: CGEventFlags, _ keyCode: CGKeyCode) -> Bool
 
@@ -83,7 +83,10 @@ class MouseEventMonitor {
     // MARK: - Private: Click Monitoring
 
     private func startClickMonitoring() {
-        let eventMask = (1 << CGEventType.leftMouseDown.rawValue) | (1 << CGEventType.keyDown.rawValue)
+        let eventMask = (1 << CGEventType.leftMouseDown.rawValue)
+            | (1 << CGEventType.rightMouseDown.rawValue)
+            | (1 << CGEventType.otherMouseDown.rawValue)
+            | (1 << CGEventType.keyDown.rawValue)
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -156,8 +159,8 @@ class MouseEventMonitor {
 
     /// Returns `true` if the event should be passed down the event chain, `false` to swallow it.
     @discardableResult
-    fileprivate func handleClick(at location: CGPoint) -> Bool {
-        return clickHandler?(location) ?? true
+    fileprivate func handleClick(at location: CGPoint, with button: CGMouseButton) -> Bool {
+        return clickHandler?(location, button) ?? true
     }
 
     private func handleMove(to location: CGPoint) {
@@ -194,9 +197,23 @@ private func mouseEventMonitorClickCallback(
 
     if type == .leftMouseDown {
         let location = event.location
-        let passDown = MouseEventMonitor.shared.handleClick(at: location)
+        let passDown = MouseEventMonitor.shared.handleClick(at: location, with: .left)
         if !passDown {
             return nil
+        }
+    } else if type == .rightMouseDown {
+        let location = event.location
+        let passDown = MouseEventMonitor.shared.handleClick(at: location, with: .right)
+        if !passDown {
+            return nil
+        }
+    } else if type == .otherMouseDown {
+        let location = event.location
+        if let button = CGMouseButton(rawValue: UInt32(event.getIntegerValueField(.mouseEventButtonNumber))) {
+            let passDown = MouseEventMonitor.shared.handleClick(at: location, with: button)
+            if !passDown {
+                return nil
+            }
         }
     } else if type == .keyDown {
         let flags = event.flags
