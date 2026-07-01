@@ -76,7 +76,7 @@ final class OpenMissionControlCore: ObservableObject {
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
         WindowAction =
-            SettingsDefaults.middleClickAction
+        SettingsDefaults.middleClickAction
 
     // MARK: - Lifecycle
 
@@ -197,7 +197,7 @@ final class OpenMissionControlCore: ObservableObject {
         }
 
         if let window = hoveredWindow {
-            switch(button) {
+            switch button {
             case .left:
                 logger.debug("Captured left click on hovered window at (\(location.x), \(location.y)).")
                 hideOverlay()
@@ -339,23 +339,25 @@ final class OpenMissionControlCore: ObservableObject {
 
                     let showQuit =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton)
-                        as? Bool ?? SettingsDefaults.showQuitButton
+                            as? Bool ?? SettingsDefaults.showQuitButton
                     let showClose =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showCloseButton)
-                        as? Bool ?? SettingsDefaults.showCloseButton
+                            as? Bool ?? SettingsDefaults.showCloseButton
                     let showMinimize =
                         UserDefaults.standard.object(
-                            forKey: SettingsDefaults.Key.showMinimizeButton) as? Bool
+                            forKey: SettingsDefaults.Key.showMinimizeButton
+                        ) as? Bool
                         ?? SettingsDefaults.showMinimizeButton
                     let showZoom =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showZoomButton)
-                        as? Bool ?? SettingsDefaults.showZoomButton
+                            as? Bool ?? SettingsDefaults.showZoomButton
                     let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }
                         .count
                     let overlayWidth = CGFloat(12 + buttonCount * 32)
 
                     let newFrame = NSRect(
-                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40)
+                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40
+                    )
                     overlayWindow?.setFrame(newFrame, display: true)
                     overlayWindow?.orderFront(nil)
 
@@ -381,16 +383,16 @@ final class OpenMissionControlCore: ObservableObject {
 
         let showQuit =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton) as? Bool
-            ?? SettingsDefaults.showQuitButton
+                ?? SettingsDefaults.showQuitButton
         let showClose =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showCloseButton) as? Bool
-            ?? SettingsDefaults.showCloseButton
+                ?? SettingsDefaults.showCloseButton
         let showMinimize =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showMinimizeButton) as? Bool
-            ?? SettingsDefaults.showMinimizeButton
+                ?? SettingsDefaults.showMinimizeButton
         let showZoom =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showZoomButton) as? Bool
-            ?? SettingsDefaults.showZoomButton
+                ?? SettingsDefaults.showZoomButton
 
         if showQuit {
             if localX >= currentX, localX <= currentX + 24 {
@@ -424,7 +426,7 @@ final class OpenMissionControlCore: ObservableObject {
     private func performWindowAction(window: [String: Any], action: WindowAction, instigator: Instigator) {
         let windowName = window[kCGWindowName as String] as? String ?? ""
 
-        switch(action) {
+        switch action {
         case .quit:
             logger.info("\(instigator.displayName) Quit triggered on window: \(windowName)")
             quitApplication(window: window)

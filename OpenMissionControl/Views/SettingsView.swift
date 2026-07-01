@@ -20,7 +20,7 @@ private func solidColor(color: Color) -> LinearGradient {
 }
 
 private let rainbowColor = LinearGradient(
-   colors: [
+    colors: [
         Color.red, Color.orange, Color.yellow, Color.green,
         Color.blue, Color.purple,
     ], startPoint: .top, endPoint: .bottom
@@ -158,12 +158,12 @@ struct SettingPickerRow<Value>: View where Value: Hashable & CaseIterable & Disp
         HStack(spacing: 12) {
             if let icon {
                 ZStack {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(iconColor)
-                    .frame(width: 28, height: 28)
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(iconColor)
+                        .frame(width: 28, height: 28)
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
                 }
             }
 
@@ -186,7 +186,6 @@ struct SettingPickerRow<Value>: View where Value: Hashable & CaseIterable & Disp
         .padding(.vertical, 8)
     }
 }
-
 
 // MARK: - Section Card
 
