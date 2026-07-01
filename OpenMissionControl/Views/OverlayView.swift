@@ -25,7 +25,8 @@ enum OverlayTheme: String, CaseIterable, DisplayNameable {
 }
 
 struct OverlayView: View {
-    @AppStorage("overlayTheme") private var currentTheme: OverlayTheme = .default
+    @AppStorage(SettingsDefaults.Key.overlayTheme) private var currentTheme: OverlayTheme =
+        SettingsDefaults.overlayTheme
     var isPreview: Bool = false
 
     var body: some View {

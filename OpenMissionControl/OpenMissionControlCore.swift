@@ -62,13 +62,21 @@ final class OpenMissionControlCore: ObservableObject {
 
     private var windows: [[String: Any]] = []
     private var windowFetchTimer: Timer?
-    @AppStorage("updateDuration") private var updateDuration: Double = 0.25
-    @AppStorage("shortcutQuit") private var shortcutQuit: Bool = false
-    @AppStorage("shortcutClose") private var shortcutClose: Bool = false
-    @AppStorage("shortcutMinimize") private var shortcutMinimize: Bool = false
-    @AppStorage("shortcutMaximize") private var shortcutMaximize: Bool = false
-    @AppStorage("rightClickAction") private var rightClickAction: WindowAction = .none
-    @AppStorage("middleClickAction") private var middleClickAction: WindowAction = .none
+    @AppStorage(SettingsDefaults.Key.updateDuration) private var updateDuration: Double =
+        SettingsDefaults.updateDuration
+    @AppStorage(SettingsDefaults.Key.shortcutQuit) private var shortcutQuit: Bool =
+        SettingsDefaults.shortcutQuit
+    @AppStorage(SettingsDefaults.Key.shortcutClose) private var shortcutClose: Bool =
+        SettingsDefaults.shortcutClose
+    @AppStorage(SettingsDefaults.Key.shortcutMinimize) private var shortcutMinimize: Bool =
+        SettingsDefaults.shortcutMinimize
+    @AppStorage(SettingsDefaults.Key.shortcutMaximize) private var shortcutMaximize: Bool =
+        SettingsDefaults.shortcutMaximize
+    @AppStorage(SettingsDefaults.Key.rightClickAction) private var rightClickAction: WindowAction =
+        SettingsDefaults.rightClickAction
+    @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
+        WindowAction =
+            SettingsDefaults.middleClickAction
 
     // MARK: - Lifecycle
 
@@ -329,14 +337,25 @@ final class OpenMissionControlCore: ObservableObject {
                         NSScreen.screens.first?.frame.height ?? NSScreen.main?.frame.height ?? 0
                     let convertedY = screenHeight - y - 40
 
-                    let showQuit = UserDefaults.standard.object(forKey: "showQuitButton") as? Bool ?? false
-                    let showClose = UserDefaults.standard.object(forKey: "showCloseButton") as? Bool ?? true
-                    let showMinimize = UserDefaults.standard.object(forKey: "showMinimizeButton") as? Bool ?? true
-                    let showZoom = UserDefaults.standard.object(forKey: "showZoomButton") as? Bool ?? true
-                    let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }.count
+                    let showQuit =
+                        UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton)
+                        as? Bool ?? SettingsDefaults.showQuitButton
+                    let showClose =
+                        UserDefaults.standard.object(forKey: SettingsDefaults.Key.showCloseButton)
+                        as? Bool ?? SettingsDefaults.showCloseButton
+                    let showMinimize =
+                        UserDefaults.standard.object(
+                            forKey: SettingsDefaults.Key.showMinimizeButton) as? Bool
+                        ?? SettingsDefaults.showMinimizeButton
+                    let showZoom =
+                        UserDefaults.standard.object(forKey: SettingsDefaults.Key.showZoomButton)
+                        as? Bool ?? SettingsDefaults.showZoomButton
+                    let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }
+                        .count
                     let overlayWidth = CGFloat(12 + buttonCount * 32)
 
-                    let newFrame = NSRect(x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40)
+                    let newFrame = NSRect(
+                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40)
                     overlayWindow?.setFrame(newFrame, display: true)
                     overlayWindow?.orderFront(nil)
 
@@ -360,11 +379,18 @@ final class OpenMissionControlCore: ObservableObject {
         let localX = location.x - rect.minX
         var currentX: CGFloat = 8
 
-        let showQuit = UserDefaults.standard.object(forKey: "showQuitButton") as? Bool ?? false
-        let showClose = UserDefaults.standard.object(forKey: "showCloseButton") as? Bool ?? true
+        let showQuit =
+            UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton) as? Bool
+            ?? SettingsDefaults.showQuitButton
+        let showClose =
+            UserDefaults.standard.object(forKey: SettingsDefaults.Key.showCloseButton) as? Bool
+            ?? SettingsDefaults.showCloseButton
         let showMinimize =
-            UserDefaults.standard.object(forKey: "showMinimizeButton") as? Bool ?? true
-        let showZoom = UserDefaults.standard.object(forKey: "showZoomButton") as? Bool ?? true
+            UserDefaults.standard.object(forKey: SettingsDefaults.Key.showMinimizeButton) as? Bool
+            ?? SettingsDefaults.showMinimizeButton
+        let showZoom =
+            UserDefaults.standard.object(forKey: SettingsDefaults.Key.showZoomButton) as? Bool
+            ?? SettingsDefaults.showZoomButton
 
         if showQuit {
             if localX >= currentX, localX <= currentX + 24 {

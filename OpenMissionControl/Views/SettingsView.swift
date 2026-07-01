@@ -218,19 +218,32 @@ struct SettingsDivider: View {
 // MARK: - Main Settings View
 
 struct SettingsView: View {
-    @AppStorage("showQuitButton") private var showQuitButton: Bool = false
-    @AppStorage("showCloseButton") private var showCloseButton: Bool = true
-    @AppStorage("showMinimizeButton") private var showMinimizeButton: Bool = true
-    @AppStorage("showZoomButton") private var showZoomButton: Bool = true
-    @AppStorage("overlayTheme") private var currentTheme: OverlayTheme = .default
-    @AppStorage("updateDuration") private var updateDuration: Double = 0.25
-    @AppStorage("mouseUpdateDuration") private var mouseUpdateDuration: Double = 0.1
-    @AppStorage("shortcutQuit") private var shortcutQuit: Bool = false
-    @AppStorage("shortcutClose") private var shortcutClose: Bool = false
-    @AppStorage("shortcutMinimize") private var shortcutMinimize: Bool = false
-    @AppStorage("shortcutMaximize") private var shortcutMaximize: Bool = false
-    @AppStorage("rightClickAction") private var rightClickAction: WindowAction = .none
-    @AppStorage("middleClickAction") private var middleClickAction: WindowAction = .none
+    @AppStorage(SettingsDefaults.Key.showQuitButton) private var showQuitButton: Bool =
+        SettingsDefaults.showQuitButton
+    @AppStorage(SettingsDefaults.Key.showCloseButton) private var showCloseButton: Bool =
+        SettingsDefaults.showCloseButton
+    @AppStorage(SettingsDefaults.Key.showMinimizeButton) private var showMinimizeButton: Bool =
+        SettingsDefaults.showMinimizeButton
+    @AppStorage(SettingsDefaults.Key.showZoomButton) private var showZoomButton: Bool =
+        SettingsDefaults.showZoomButton
+    @AppStorage(SettingsDefaults.Key.overlayTheme) private var currentTheme: OverlayTheme =
+        SettingsDefaults.overlayTheme
+    @AppStorage(SettingsDefaults.Key.updateDuration) private var updateDuration: Double =
+        SettingsDefaults.updateDuration
+    @AppStorage(SettingsDefaults.Key.mouseUpdateDuration) private var mouseUpdateDuration: Double =
+        SettingsDefaults.mouseUpdateDuration
+    @AppStorage(SettingsDefaults.Key.shortcutQuit) private var shortcutQuit: Bool = SettingsDefaults
+        .shortcutQuit
+    @AppStorage(SettingsDefaults.Key.shortcutClose) private var shortcutClose: Bool =
+        SettingsDefaults.shortcutClose
+    @AppStorage(SettingsDefaults.Key.shortcutMinimize) private var shortcutMinimize: Bool =
+        SettingsDefaults.shortcutMinimize
+    @AppStorage(SettingsDefaults.Key.shortcutMaximize) private var shortcutMaximize: Bool =
+        SettingsDefaults.shortcutMaximize
+    @AppStorage(SettingsDefaults.Key.rightClickAction) private var rightClickAction: WindowAction =
+        SettingsDefaults.rightClickAction
+    @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
+        WindowAction = SettingsDefaults.middleClickAction
 
     @State private var launchAtLogin: Bool = LaunchAtLoginManager.isEnabled
     private let logger = Logger(

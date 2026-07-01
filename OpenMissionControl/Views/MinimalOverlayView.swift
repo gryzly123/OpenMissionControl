@@ -10,10 +10,14 @@ import SwiftUI
 struct MinimalOverlayView: View {
     @ObservedObject private var openMissionControlCore = OpenMissionControlCore.shared
 
-    @AppStorage("showQuitButton") private var showQuitButton: Bool = false
-    @AppStorage("showCloseButton") private var showCloseButton: Bool = true
-    @AppStorage("showMinimizeButton") private var showMinimizeButton: Bool = true
-    @AppStorage("showZoomButton") private var showZoomButton: Bool = true
+    @AppStorage(SettingsDefaults.Key.showQuitButton) private var showQuitButton: Bool =
+        SettingsDefaults.showQuitButton
+    @AppStorage(SettingsDefaults.Key.showCloseButton) private var showCloseButton: Bool =
+        SettingsDefaults.showCloseButton
+    @AppStorage(SettingsDefaults.Key.showMinimizeButton) private var showMinimizeButton: Bool =
+        SettingsDefaults.showMinimizeButton
+    @AppStorage(SettingsDefaults.Key.showZoomButton) private var showZoomButton: Bool =
+        SettingsDefaults.showZoomButton
 
     var body: some View {
         HStack(spacing: 8) {

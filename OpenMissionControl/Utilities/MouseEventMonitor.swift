@@ -23,7 +23,8 @@ class MouseEventMonitor {
 
     // MARK: - Properties
 
-    @AppStorage("mouseUpdateDuration") private var mouseUpdateDuration: Double = 0.1
+    @AppStorage(SettingsDefaults.Key.mouseUpdateDuration) private var mouseUpdateDuration: Double =
+        SettingsDefaults.mouseUpdateDuration
 
     private let logger = Logger(
         subsystem: "dev.travisxu.OpenMissionControl",
