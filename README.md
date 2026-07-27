@@ -30,7 +30,7 @@ brew install --cask nohackjustnoobb/tap/openmissioncontrol
 
 ### Option 2: Manual Installation
 
-1. Download the app from the [latest release](https://www.google.com/search?q=https://github.com/nohackjustnoobb/OpenMissionControl/releases/latest).
+1. Download the app from the [latest release](https://github.com/nohackjustnoobb/OpenMissionControl/releases/latest).
 2. Move the app to your `/Applications` folder.
 3. If macOS says the app is damaged, run the following command in your terminal to remove the quarantine flag:
 
@@ -41,7 +41,7 @@ sudo xattr -rd com.apple.quarantine /Applications/Open\ Mission\ Control.app
 ### First-Time Setup
 
 1. Open the app and grant **Accessibility** permissions when prompted in System Settings.
-2. *Note: Sometimes an app restart is needed for it to function properly.*
+2. _Note: Sometimes an app restart is needed for it to function properly._
 
 ## Credits
 
