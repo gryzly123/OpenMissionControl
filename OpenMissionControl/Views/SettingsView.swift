@@ -227,6 +227,8 @@ struct SettingsView: View {
         SettingsDefaults.showZoomButton
     @AppStorage(SettingsDefaults.Key.overlayTheme) private var currentTheme: OverlayTheme =
         SettingsDefaults.overlayTheme
+    @AppStorage(SettingsDefaults.Key.overlayButtonScale) private var overlayButtonScale: Double =
+        SettingsDefaults.overlayButtonScale
     @AppStorage(SettingsDefaults.Key.updateDuration) private var updateDuration: Double =
         SettingsDefaults.updateDuration
     @AppStorage(SettingsDefaults.Key.mouseUpdateDuration) private var mouseUpdateDuration: Double =
@@ -239,6 +241,8 @@ struct SettingsView: View {
         SettingsDefaults.shortcutMinimize
     @AppStorage(SettingsDefaults.Key.shortcutMaximize) private var shortcutMaximize: Bool =
         SettingsDefaults.shortcutMaximize
+    @AppStorage(SettingsDefaults.Key.shortcutActivateWindow) private var shortcutActivateWindow:
+        Bool = SettingsDefaults.shortcutActivateWindow
     @AppStorage(SettingsDefaults.Key.rightClickAction) private var rightClickAction: WindowAction =
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
@@ -342,6 +346,30 @@ struct SettingsView: View {
 
                         SettingsDivider()
 
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Overlay Size")
+                                    .font(.system(size: 13, weight: .medium))
+                                Spacer()
+                                Text(String(format: "%.0f%%", overlayButtonScale * 100))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Slider(
+                                value: $overlayButtonScale,
+                                in: OverlaySizing.scaleRange,
+                                step: OverlaySizing.scaleStep
+                            )
+                            .controlSize(.small)
+                            Text("The size of the Mission Control overlay.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+
+                        SettingsDivider()
+
                         SettingToggleRow(
                             icon: "power",
                             iconColor: solidColor(color: .purple),
@@ -380,7 +408,7 @@ struct SettingsView: View {
 
                 // MARK: Preview
 
-                if showCloseButton || showMinimizeButton || showZoomButton {
+                if showQuitButton || showCloseButton || showMinimizeButton || showZoomButton {
                     VStack(alignment: .leading, spacing: 6) {
                         sectionHeader("Preview")
 
@@ -407,6 +435,13 @@ struct SettingsView: View {
                     sectionHeader("Keyboard Shortcuts")
 
                     SettingsCard {
+                        SettingToggleRow(
+                            title: "Activate Window (Return/Enter)",
+                            isOn: $shortcutActivateWindow
+                        )
+
+                        SettingsDivider()
+
                         SettingToggleRow(
                             title: "Quit (⌘Q)",
                             isOn: $shortcutQuit

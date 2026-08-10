@@ -17,6 +17,7 @@ enum SettingsDefaults {
         static let showZoomButton = "showZoomButton"
 
         static let overlayTheme = "overlayTheme"
+        static let overlayButtonScale = "overlayButtonScale"
 
         static let updateDuration = "updateDuration"
         static let mouseUpdateDuration = "mouseUpdateDuration"
@@ -25,6 +26,7 @@ enum SettingsDefaults {
         static let shortcutClose = "shortcutClose"
         static let shortcutMinimize = "shortcutMinimize"
         static let shortcutMaximize = "shortcutMaximize"
+        static let shortcutActivateWindow = "shortcutActivateWindow"
 
         static let rightClickAction = "rightClickAction"
         static let middleClickAction = "middleClickAction"
@@ -38,6 +40,7 @@ enum SettingsDefaults {
     static let showZoomButton: Bool = true
 
     static let overlayTheme: OverlayTheme = .default
+    static let overlayButtonScale: Double = 1.0
 
     static let updateDuration: Double = 0.25
     static let mouseUpdateDuration: Double = 0.1
@@ -46,6 +49,7 @@ enum SettingsDefaults {
     static let shortcutClose: Bool = false
     static let shortcutMinimize: Bool = false
     static let shortcutMaximize: Bool = false
+    static let shortcutActivateWindow: Bool = true
 
     static let rightClickAction: WindowAction = .none
     static let middleClickAction: WindowAction = .none

@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct DefaultOverlayView: View {
+    let sizing: OverlaySizing
+
     @Environment(\.isPreview) private var isPreview
     @ObservedObject private var openMissionControlCore = OpenMissionControlCore.shared
 
@@ -21,7 +23,7 @@ struct DefaultOverlayView: View {
         SettingsDefaults.showZoomButton
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: sizing.spacing) {
             if showQuitButton {
                 trafficLight(color: .purple, icon: "power", iconSize: 10)
             }
@@ -38,15 +40,15 @@ struct DefaultOverlayView: View {
                 trafficLight(color: .green, icon: "arrow.up.backward.and.arrow.down.forward", iconSize: 10)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, sizing.horizontalPadding)
+        .padding(.vertical, sizing.verticalPadding)
         .background(
             Capsule()
                 .fill(Color(NSColor.windowBackgroundColor).opacity(0.95))
         )
         .overlay(
             Capsule()
-                .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+                .stroke(Color.primary.opacity(0.15), lineWidth: sizing.borderWidth)
         )
     }
 
@@ -58,10 +60,13 @@ struct DefaultOverlayView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 ))
-                .frame(width: 24, height: 24)
-                .shadow(color: color.opacity(0.4), radius: 3, x: 0, y: 1)
+                .frame(width: sizing.buttonSize, height: sizing.buttonSize)
+                .shadow(
+                    color: color.opacity(0.4), radius: sizing.shadowRadius,
+                    x: 0, y: sizing.shadowYOffset
+                )
             Image(systemName: icon)
-                .font(.system(size: iconSize, weight: .bold))
+                .font(.system(size: iconSize * sizing.scale, weight: .bold))
                 .foregroundColor((openMissionControlCore.isOverlayHovered || isPreview) ? Color.black.opacity(0.45) : .clear)
         }
     }

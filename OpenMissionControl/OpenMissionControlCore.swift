@@ -52,6 +52,15 @@ enum Instigator: Int, CaseIterable, DisplayNameable {
     }
 }
 
+enum KeyboardKey: CGKeyCode {
+    case returnKey = 36
+    case keypadEnter = 76
+    case quit = 12
+    case close = 13
+    case minimize = 46
+    case maximize = 3
+}
+
 final class OpenMissionControlCore: ObservableObject {
     static let shared = OpenMissionControlCore()
     private let logger = Logger(
@@ -64,6 +73,8 @@ final class OpenMissionControlCore: ObservableObject {
     private var windowFetchTimer: Timer?
     @AppStorage(SettingsDefaults.Key.updateDuration) private var updateDuration: Double =
         SettingsDefaults.updateDuration
+    @AppStorage(SettingsDefaults.Key.overlayButtonScale) private var overlayButtonScale: Double =
+        SettingsDefaults.overlayButtonScale
     @AppStorage(SettingsDefaults.Key.shortcutQuit) private var shortcutQuit: Bool =
         SettingsDefaults.shortcutQuit
     @AppStorage(SettingsDefaults.Key.shortcutClose) private var shortcutClose: Bool =
@@ -72,6 +83,8 @@ final class OpenMissionControlCore: ObservableObject {
         SettingsDefaults.shortcutMinimize
     @AppStorage(SettingsDefaults.Key.shortcutMaximize) private var shortcutMaximize: Bool =
         SettingsDefaults.shortcutMaximize
+    @AppStorage(SettingsDefaults.Key.shortcutActivateWindow) private var shortcutActivateWindow:
+        Bool = SettingsDefaults.shortcutActivateWindow
     @AppStorage(SettingsDefaults.Key.rightClickAction) private var rightClickAction: WindowAction =
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
@@ -109,20 +122,20 @@ final class OpenMissionControlCore: ObservableObject {
         }
         MissionControlMonitor.shared.start()
 
-        // Configure mouse event monitor
-        MouseEventMonitor.shared.setClickHandler { [weak self] location, button in
+        // Configure input event monitor
+        InputEventMonitor.shared.setClickHandler { [weak self] location, button in
             guard let self = self else { return true }
 
             self.logger.debug("Mouse clicked at: \(location.x), \(location.y) (button: \(button.rawValue))")
             return self.handleMouseClick(at: location, with: button)
         }
-        MouseEventMonitor.shared.setMoveHandler { [weak self] location in
+        InputEventMonitor.shared.setMoveHandler { [weak self] location in
             guard let self = self else { return }
 
             self.logger.debug("Mouse moved to: \(location.x), \(location.y)")
             self.handleMouseMove(to: location)
         }
-        MouseEventMonitor.shared.setKeyHandler { [weak self] flags, keyCode in
+        InputEventMonitor.shared.setKeyHandler { [weak self] flags, keyCode in
             guard let self = self else { return true }
 
             return self.handleKeyPress(flags: flags, keyCode: keyCode)
@@ -143,7 +156,7 @@ final class OpenMissionControlCore: ObservableObject {
         axTrustedTimer?.invalidate()
         axTrustedTimer = nil
         MissionControlMonitor.shared.stop()
-        MouseEventMonitor.shared.stop()
+        InputEventMonitor.shared.stop()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         hideOverlay()
         isRunning = false
@@ -226,28 +239,42 @@ final class OpenMissionControlCore: ObservableObject {
     // MARK: - Key Event Handling
 
     private func handleKeyPress(flags: CGEventFlags, keyCode: CGKeyCode) -> Bool {
-        guard isOverlayShown, let window = hoveredWindow else { return true }
+        guard isOverlayShown else { return true }
+
+        let isReturnKey = keyCode == KeyboardKey.returnKey.rawValue
+            || keyCode == KeyboardKey.keypadEnter.rawValue
+        let hasActionModifier = flags.contains(.maskCommand) || flags.contains(.maskControl)
+            || flags.contains(.maskAlternate) || flags.contains(.maskShift)
+
+        if shortcutActivateWindow, isReturnKey, !hasActionModifier {
+            if let window = hoveredWindow {
+                activateHoveredWindow(window)
+            }
+            return false
+        }
+
+        guard let window = hoveredWindow else { return true }
 
         // Check for Command key
         guard flags.contains(.maskCommand) else { return true }
 
-        switch keyCode {
-        case 12: // Q
+        switch KeyboardKey(rawValue: keyCode) {
+        case .quit: // Q
             if shortcutQuit {
                 performWindowAction(window: window, action: .quit, instigator: .keyboard)
                 return false
             }
-        case 13: // W
+        case .close: // W
             if shortcutClose {
                 performWindowAction(window: window, action: .close, instigator: .keyboard)
                 return false
             }
-        case 46: // M
+        case .minimize: // M
             if shortcutMinimize {
                 performWindowAction(window: window, action: .minimize, instigator: .keyboard)
                 return false
             }
-        case 3: // F
+        case .maximize: // F
             if shortcutMaximize {
                 performWindowAction(window: window, action: .zoom, instigator: .keyboard)
                 return false
@@ -257,6 +284,31 @@ final class OpenMissionControlCore: ObservableObject {
         }
 
         return true
+    }
+
+    private func activateHoveredWindow(_ window: [String: Any]) {
+        guard let location = CGEvent(source: nil)?.location else { return }
+
+        let windowName = window[kCGWindowName as String] as? String ?? ""
+        logger.info("Return shortcut activated window: \(windowName)")
+
+        hideOverlay()
+
+        let source = CGEventSource(stateID: .hidSystemState)
+        let mouseDown = CGEvent(
+            mouseEventSource: source,
+            mouseType: .leftMouseDown,
+            mouseCursorPosition: location,
+            mouseButton: .left
+        )
+        let mouseUp = CGEvent(
+            mouseEventSource: source,
+            mouseType: .leftMouseUp,
+            mouseCursorPosition: location,
+            mouseButton: .left
+        )
+        mouseDown?.post(tap: .cghidEventTap)
+        mouseUp?.post(tap: .cghidEventTap)
     }
 
     // MARK: - Window Fetching
@@ -311,9 +363,12 @@ final class OpenMissionControlCore: ObservableObject {
 
         DispatchQueue.main.async { [self] in
             if let rect = overlayRect {
-                let isHovering = rect.contains(mouseLocation)
+                let isHovering = hoveredWindow != nil && rect.contains(mouseLocation)
                 if isOverlayHovered != isHovering {
                     isOverlayHovered = isHovering
+                }
+                if isHovering {
+                    return
                 }
             }
 
@@ -335,7 +390,8 @@ final class OpenMissionControlCore: ObservableObject {
                     // Convert CG top-left coordinates to NSWindow bottom-left coordinates
                     let screenHeight =
                         NSScreen.screens.first?.frame.height ?? NSScreen.main?.frame.height ?? 0
-                    let convertedY = screenHeight - y - 40
+                    let sizing = OverlaySizing(scale: overlayButtonScale)
+                    let convertedY = screenHeight - y - sizing.height
 
                     let showQuit =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton)
@@ -353,15 +409,17 @@ final class OpenMissionControlCore: ObservableObject {
                             as? Bool ?? SettingsDefaults.showZoomButton
                     let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }
                         .count
-                    let overlayWidth = CGFloat(12 + buttonCount * 32)
+                    let overlayWidth = sizing.width(buttonCount: buttonCount)
 
                     let newFrame = NSRect(
-                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40
+                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: sizing.height
                     )
                     overlayWindow?.setFrame(newFrame, display: true)
                     overlayWindow?.orderFront(nil)
 
-                    let cgOverlayRect = CGRect(x: x + 8, y: y + 8, width: overlayWidth, height: 40)
+                    let cgOverlayRect = CGRect(
+                        x: x + 8, y: y + 8, width: overlayWidth, height: sizing.height
+                    )
                     overlayRect = cgOverlayRect
                     hoveredWindow = windowInfo
 
@@ -379,7 +437,8 @@ final class OpenMissionControlCore: ObservableObject {
         guard let rect = overlayRect, let window = hoveredWindow else { return }
 
         let localX = location.x - rect.minX
-        var currentX: CGFloat = 8
+        let sizing = OverlaySizing(scale: overlayButtonScale)
+        var currentX = sizing.horizontalPadding
 
         let showQuit =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton) as? Bool
@@ -395,31 +454,31 @@ final class OpenMissionControlCore: ObservableObject {
                 ?? SettingsDefaults.showZoomButton
 
         if showQuit {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .quit, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
 
         if showClose {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .close, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
 
         if showMinimize {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .minimize, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
 
         if showZoom {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .zoom, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
     }
 
@@ -525,7 +584,7 @@ final class OpenMissionControlCore: ObservableObject {
         }
 
         // Start mouse monitoring when overlay is visible
-        MouseEventMonitor.shared.start()
+        InputEventMonitor.shared.start()
 
         // Do an initial overlay update with current mouse position
         if let mouseLocation = CGEvent(source: nil)?.location {
@@ -537,7 +596,8 @@ final class OpenMissionControlCore: ObservableObject {
         windowFetchTimer?.invalidate()
         windowFetchTimer = nil
         overlayWindow?.orderOut(nil)
-        MouseEventMonitor.shared.stop()
+        hoveredWindow = nil
+        InputEventMonitor.shared.stop()
     }
 
     func recreateOverlay() {

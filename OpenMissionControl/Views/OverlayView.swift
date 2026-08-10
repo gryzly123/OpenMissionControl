@@ -27,17 +27,21 @@ enum OverlayTheme: String, CaseIterable, DisplayNameable {
 struct OverlayView: View {
     @AppStorage(SettingsDefaults.Key.overlayTheme) private var currentTheme: OverlayTheme =
         SettingsDefaults.overlayTheme
+    @AppStorage(SettingsDefaults.Key.overlayButtonScale) private var overlayButtonScale: Double =
+        SettingsDefaults.overlayButtonScale
     var isPreview: Bool = false
 
     var body: some View {
+        let sizing = OverlaySizing(scale: overlayButtonScale)
+
         Group {
             switch currentTheme {
             case .default:
-                DefaultOverlayView()
+                DefaultOverlayView(sizing: sizing)
             case .minimal:
-                MinimalOverlayView()
+                MinimalOverlayView(sizing: sizing)
             case .coloredMinimal:
-                ColoredMinimalOverlayView()
+                ColoredMinimalOverlayView(sizing: sizing)
             }
         }
         .environment(\.isPreview, isPreview)
