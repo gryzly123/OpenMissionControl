@@ -1,5 +1,5 @@
 //
-//  MouseEventMonitor.swift
+//  InputEventMonitor.swift
 //  OpenMissionControl
 //
 //  Created by Travis XU on 15/3/2026.
@@ -11,9 +11,9 @@ import Foundation
 import os
 import SwiftUI
 
-/// Monitors global mouse events and notifies registered handlers on click and move events.
-class MouseEventMonitor {
-    static let shared = MouseEventMonitor()
+/// Monitors global input events and notifies registered handlers on click, move, and key events.
+class InputEventMonitor {
+    static let shared = InputEventMonitor()
 
     // MARK: - Types
 
@@ -28,7 +28,7 @@ class MouseEventMonitor {
 
     private let logger = Logger(
         subsystem: "dev.travisxu.OpenMissionControl",
-        category: "MouseEventMonitor"
+        category: "InputEventMonitor"
     )
 
     private var clickHandler: ClickHandler?
@@ -36,7 +36,7 @@ class MouseEventMonitor {
     private var keyHandler: KeyHandler?
     private(set) var isMonitoring: Bool = false
 
-    // MARK: - Click Monitoring (CGEvent tap)
+    // MARK: - Input Monitoring (CGEvent tap)
 
     fileprivate var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -65,39 +65,39 @@ class MouseEventMonitor {
 
         isMonitoring = true
 
-        startClickMonitoring()
+        startInputMonitoring()
         startMoveMonitoring()
 
-        logger.info("Mouse event monitoring started.")
+        logger.info("Input event monitoring started.")
     }
 
     func stop() {
         guard isMonitoring else { return }
 
-        stopClickMonitoring()
+        stopInputMonitoring()
         stopMoveMonitoring()
 
         isMonitoring = false
-        logger.info("Mouse event monitoring stopped.")
+        logger.info("Input event monitoring stopped.")
     }
 
-    // MARK: - Private: Click Monitoring
+    // MARK: - Private: Input Monitoring
 
-    private func startClickMonitoring() {
+    private func startInputMonitoring() {
         let eventMask = (1 << CGEventType.leftMouseDown.rawValue)
             | (1 << CGEventType.rightMouseDown.rawValue)
             | (1 << CGEventType.otherMouseDown.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
 
         guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
+            tap: .cghidEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: CGEventMask(eventMask),
-            callback: mouseEventMonitorClickCallback,
+            callback: inputEventMonitorCallback,
             userInfo: nil
         ) else {
-            logger.error("Failed to create click event tap. Please grant Accessibility permissions.")
+            logger.error("Failed to create input event tap. Please grant Accessibility permissions.")
             return
         }
 
@@ -109,10 +109,10 @@ class MouseEventMonitor {
         }
 
         CGEvent.tapEnable(tap: tap, enable: true)
-        logger.info("Click event tap started.")
+        logger.info("Input event tap started.")
     }
 
-    private func stopClickMonitoring() {
+    private func stopInputMonitoring() {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
@@ -123,7 +123,7 @@ class MouseEventMonitor {
 
         eventTap = nil
         runLoopSource = nil
-        logger.info("Click event tap stopped.")
+        logger.info("Input event tap stopped.")
     }
 
     // MARK: - Private: Move Monitoring
@@ -180,9 +180,9 @@ class MouseEventMonitor {
     }
 }
 
-// MARK: - C Callback for Click Events
+// MARK: - C Callback for Input Events
 
-private func mouseEventMonitorClickCallback(
+private func inputEventMonitorCallback(
     proxy _: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
@@ -190,7 +190,7 @@ private func mouseEventMonitorClickCallback(
 ) -> Unmanaged<CGEvent>? {
     // Re-enable tap if it was disabled by timeout or user input
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-        if let tap = MouseEventMonitor.shared.eventTap {
+        if let tap = InputEventMonitor.shared.eventTap {
             CGEvent.tapEnable(tap: tap, enable: true)
         }
         return Unmanaged.passRetained(event)
@@ -198,20 +198,20 @@ private func mouseEventMonitorClickCallback(
 
     if type == .leftMouseDown {
         let location = event.location
-        let passDown = MouseEventMonitor.shared.handleClick(at: location, with: .left)
+        let passDown = InputEventMonitor.shared.handleClick(at: location, with: .left)
         if !passDown {
             return nil
         }
     } else if type == .rightMouseDown {
         let location = event.location
-        let passDown = MouseEventMonitor.shared.handleClick(at: location, with: .right)
+        let passDown = InputEventMonitor.shared.handleClick(at: location, with: .right)
         if !passDown {
             return nil
         }
     } else if type == .otherMouseDown {
         let location = event.location
         if let button = CGMouseButton(rawValue: UInt32(event.getIntegerValueField(.mouseEventButtonNumber))) {
-            let passDown = MouseEventMonitor.shared.handleClick(at: location, with: button)
+            let passDown = InputEventMonitor.shared.handleClick(at: location, with: button)
             if !passDown {
                 return nil
             }
@@ -219,7 +219,7 @@ private func mouseEventMonitorClickCallback(
     } else if type == .keyDown {
         let flags = event.flags
         let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        let passDown = MouseEventMonitor.shared.handleKey(flags: flags, keyCode: keyCode)
+        let passDown = InputEventMonitor.shared.handleKey(flags: flags, keyCode: keyCode)
         if !passDown {
             return nil
         }

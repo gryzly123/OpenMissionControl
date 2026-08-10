@@ -52,6 +52,15 @@ enum Instigator: Int, CaseIterable, DisplayNameable {
     }
 }
 
+enum KeyboardKey: CGKeyCode {
+    case returnKey = 36
+    case keypadEnter = 76
+    case quit = 12
+    case close = 13
+    case minimize = 46
+    case maximize = 3
+}
+
 final class OpenMissionControlCore: ObservableObject {
     static let shared = OpenMissionControlCore()
     private let logger = Logger(
@@ -72,6 +81,8 @@ final class OpenMissionControlCore: ObservableObject {
         SettingsDefaults.shortcutMinimize
     @AppStorage(SettingsDefaults.Key.shortcutMaximize) private var shortcutMaximize: Bool =
         SettingsDefaults.shortcutMaximize
+    @AppStorage(SettingsDefaults.Key.shortcutActivateWindow) private var shortcutActivateWindow:
+        Bool = SettingsDefaults.shortcutActivateWindow
     @AppStorage(SettingsDefaults.Key.rightClickAction) private var rightClickAction: WindowAction =
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
@@ -109,20 +120,20 @@ final class OpenMissionControlCore: ObservableObject {
         }
         MissionControlMonitor.shared.start()
 
-        // Configure mouse event monitor
-        MouseEventMonitor.shared.setClickHandler { [weak self] location, button in
+        // Configure input event monitor
+        InputEventMonitor.shared.setClickHandler { [weak self] location, button in
             guard let self = self else { return true }
 
             self.logger.debug("Mouse clicked at: \(location.x), \(location.y) (button: \(button.rawValue))")
             return self.handleMouseClick(at: location, with: button)
         }
-        MouseEventMonitor.shared.setMoveHandler { [weak self] location in
+        InputEventMonitor.shared.setMoveHandler { [weak self] location in
             guard let self = self else { return }
 
             self.logger.debug("Mouse moved to: \(location.x), \(location.y)")
             self.handleMouseMove(to: location)
         }
-        MouseEventMonitor.shared.setKeyHandler { [weak self] flags, keyCode in
+        InputEventMonitor.shared.setKeyHandler { [weak self] flags, keyCode in
             guard let self = self else { return true }
 
             return self.handleKeyPress(flags: flags, keyCode: keyCode)
@@ -143,7 +154,7 @@ final class OpenMissionControlCore: ObservableObject {
         axTrustedTimer?.invalidate()
         axTrustedTimer = nil
         MissionControlMonitor.shared.stop()
-        MouseEventMonitor.shared.stop()
+        InputEventMonitor.shared.stop()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         hideOverlay()
         isRunning = false
@@ -226,28 +237,42 @@ final class OpenMissionControlCore: ObservableObject {
     // MARK: - Key Event Handling
 
     private func handleKeyPress(flags: CGEventFlags, keyCode: CGKeyCode) -> Bool {
-        guard isOverlayShown, let window = hoveredWindow else { return true }
+        guard isOverlayShown else { return true }
+
+        let isReturnKey = keyCode == KeyboardKey.returnKey.rawValue
+            || keyCode == KeyboardKey.keypadEnter.rawValue
+        let hasActionModifier = flags.contains(.maskCommand) || flags.contains(.maskControl)
+            || flags.contains(.maskAlternate) || flags.contains(.maskShift)
+
+        if shortcutActivateWindow, isReturnKey, !hasActionModifier {
+            if let window = hoveredWindow {
+                activateHoveredWindow(window)
+            }
+            return false
+        }
+
+        guard let window = hoveredWindow else { return true }
 
         // Check for Command key
         guard flags.contains(.maskCommand) else { return true }
 
-        switch keyCode {
-        case 12: // Q
+        switch KeyboardKey(rawValue: keyCode) {
+        case .quit: // Q
             if shortcutQuit {
                 performWindowAction(window: window, action: .quit, instigator: .keyboard)
                 return false
             }
-        case 13: // W
+        case .close: // W
             if shortcutClose {
                 performWindowAction(window: window, action: .close, instigator: .keyboard)
                 return false
             }
-        case 46: // M
+        case .minimize: // M
             if shortcutMinimize {
                 performWindowAction(window: window, action: .minimize, instigator: .keyboard)
                 return false
             }
-        case 3: // F
+        case .maximize: // F
             if shortcutMaximize {
                 performWindowAction(window: window, action: .zoom, instigator: .keyboard)
                 return false
@@ -257,6 +282,31 @@ final class OpenMissionControlCore: ObservableObject {
         }
 
         return true
+    }
+
+    private func activateHoveredWindow(_ window: [String: Any]) {
+        guard let location = CGEvent(source: nil)?.location else { return }
+
+        let windowName = window[kCGWindowName as String] as? String ?? ""
+        logger.info("Return shortcut activated window: \(windowName)")
+
+        hideOverlay()
+
+        let source = CGEventSource(stateID: .hidSystemState)
+        let mouseDown = CGEvent(
+            mouseEventSource: source,
+            mouseType: .leftMouseDown,
+            mouseCursorPosition: location,
+            mouseButton: .left
+        )
+        let mouseUp = CGEvent(
+            mouseEventSource: source,
+            mouseType: .leftMouseUp,
+            mouseCursorPosition: location,
+            mouseButton: .left
+        )
+        mouseDown?.post(tap: .cghidEventTap)
+        mouseUp?.post(tap: .cghidEventTap)
     }
 
     // MARK: - Window Fetching
@@ -525,7 +575,7 @@ final class OpenMissionControlCore: ObservableObject {
         }
 
         // Start mouse monitoring when overlay is visible
-        MouseEventMonitor.shared.start()
+        InputEventMonitor.shared.start()
 
         // Do an initial overlay update with current mouse position
         if let mouseLocation = CGEvent(source: nil)?.location {
@@ -537,7 +587,8 @@ final class OpenMissionControlCore: ObservableObject {
         windowFetchTimer?.invalidate()
         windowFetchTimer = nil
         overlayWindow?.orderOut(nil)
-        MouseEventMonitor.shared.stop()
+        hoveredWindow = nil
+        InputEventMonitor.shared.stop()
     }
 
     func recreateOverlay() {

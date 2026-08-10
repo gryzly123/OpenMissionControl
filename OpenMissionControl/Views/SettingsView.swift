@@ -239,6 +239,8 @@ struct SettingsView: View {
         SettingsDefaults.shortcutMinimize
     @AppStorage(SettingsDefaults.Key.shortcutMaximize) private var shortcutMaximize: Bool =
         SettingsDefaults.shortcutMaximize
+    @AppStorage(SettingsDefaults.Key.shortcutActivateWindow) private var shortcutActivateWindow:
+        Bool = SettingsDefaults.shortcutActivateWindow
     @AppStorage(SettingsDefaults.Key.rightClickAction) private var rightClickAction: WindowAction =
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
@@ -407,6 +409,13 @@ struct SettingsView: View {
                     sectionHeader("Keyboard Shortcuts")
 
                     SettingsCard {
+                        SettingToggleRow(
+                            title: "Activate Window (Return/Enter)",
+                            isOn: $shortcutActivateWindow
+                        )
+
+                        SettingsDivider()
+
                         SettingToggleRow(
                             title: "Quit (⌘Q)",
                             isOn: $shortcutQuit

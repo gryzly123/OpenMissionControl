@@ -25,6 +25,7 @@ enum SettingsDefaults {
         static let shortcutClose = "shortcutClose"
         static let shortcutMinimize = "shortcutMinimize"
         static let shortcutMaximize = "shortcutMaximize"
+        static let shortcutActivateWindow = "shortcutActivateWindow"
 
         static let rightClickAction = "rightClickAction"
         static let middleClickAction = "middleClickAction"
@@ -46,6 +47,7 @@ enum SettingsDefaults {
     static let shortcutClose: Bool = false
     static let shortcutMinimize: Bool = false
     static let shortcutMaximize: Bool = false
+    static let shortcutActivateWindow: Bool = true
 
     static let rightClickAction: WindowAction = .none
     static let middleClickAction: WindowAction = .none
