@@ -73,6 +73,8 @@ final class OpenMissionControlCore: ObservableObject {
     private var windowFetchTimer: Timer?
     @AppStorage(SettingsDefaults.Key.updateDuration) private var updateDuration: Double =
         SettingsDefaults.updateDuration
+    @AppStorage(SettingsDefaults.Key.overlayButtonScale) private var overlayButtonScale: Double =
+        SettingsDefaults.overlayButtonScale
     @AppStorage(SettingsDefaults.Key.shortcutQuit) private var shortcutQuit: Bool =
         SettingsDefaults.shortcutQuit
     @AppStorage(SettingsDefaults.Key.shortcutClose) private var shortcutClose: Bool =
@@ -361,9 +363,12 @@ final class OpenMissionControlCore: ObservableObject {
 
         DispatchQueue.main.async { [self] in
             if let rect = overlayRect {
-                let isHovering = rect.contains(mouseLocation)
+                let isHovering = hoveredWindow != nil && rect.contains(mouseLocation)
                 if isOverlayHovered != isHovering {
                     isOverlayHovered = isHovering
+                }
+                if isHovering {
+                    return
                 }
             }
 
@@ -385,7 +390,8 @@ final class OpenMissionControlCore: ObservableObject {
                     // Convert CG top-left coordinates to NSWindow bottom-left coordinates
                     let screenHeight =
                         NSScreen.screens.first?.frame.height ?? NSScreen.main?.frame.height ?? 0
-                    let convertedY = screenHeight - y - 40
+                    let sizing = OverlaySizing(scale: overlayButtonScale)
+                    let convertedY = screenHeight - y - sizing.height
 
                     let showQuit =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton)
@@ -403,15 +409,17 @@ final class OpenMissionControlCore: ObservableObject {
                             as? Bool ?? SettingsDefaults.showZoomButton
                     let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }
                         .count
-                    let overlayWidth = CGFloat(12 + buttonCount * 32)
+                    let overlayWidth = sizing.width(buttonCount: buttonCount)
 
                     let newFrame = NSRect(
-                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: 40
+                        x: x + 8, y: convertedY - 8, width: overlayWidth, height: sizing.height
                     )
                     overlayWindow?.setFrame(newFrame, display: true)
                     overlayWindow?.orderFront(nil)
 
-                    let cgOverlayRect = CGRect(x: x + 8, y: y + 8, width: overlayWidth, height: 40)
+                    let cgOverlayRect = CGRect(
+                        x: x + 8, y: y + 8, width: overlayWidth, height: sizing.height
+                    )
                     overlayRect = cgOverlayRect
                     hoveredWindow = windowInfo
 
@@ -429,7 +437,8 @@ final class OpenMissionControlCore: ObservableObject {
         guard let rect = overlayRect, let window = hoveredWindow else { return }
 
         let localX = location.x - rect.minX
-        var currentX: CGFloat = 8
+        let sizing = OverlaySizing(scale: overlayButtonScale)
+        var currentX = sizing.horizontalPadding
 
         let showQuit =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton) as? Bool
@@ -445,31 +454,31 @@ final class OpenMissionControlCore: ObservableObject {
                 ?? SettingsDefaults.showZoomButton
 
         if showQuit {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .quit, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
 
         if showClose {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .close, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
 
         if showMinimize {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .minimize, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
 
         if showZoom {
-            if localX >= currentX, localX <= currentX + 24 {
+            if localX >= currentX, localX <= currentX + sizing.buttonSize {
                 performWindowAction(window: window, action: .zoom, instigator: .overlay)
             }
-            currentX += 32
+            currentX += sizing.buttonStride
         }
     }
 

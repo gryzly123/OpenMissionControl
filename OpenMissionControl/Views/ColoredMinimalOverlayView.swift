@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ColoredMinimalOverlayView: View {
+    let sizing: OverlaySizing
+
     @ObservedObject private var openMissionControlCore = OpenMissionControlCore.shared
 
     @AppStorage(SettingsDefaults.Key.showQuitButton) private var showQuitButton: Bool =
@@ -20,7 +22,7 @@ struct ColoredMinimalOverlayView: View {
         SettingsDefaults.showZoomButton
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: sizing.spacing) {
             if showQuitButton {
                 overlayIcon(color: .purple, icon: "power", iconSize: 10)
             }
@@ -37,22 +39,22 @@ struct ColoredMinimalOverlayView: View {
                 overlayIcon(color: .green, icon: "arrow.up.backward.and.arrow.down.forward", iconSize: 12)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, sizing.horizontalPadding)
+        .padding(.vertical, sizing.verticalPadding)
         .background(
             Capsule()
                 .fill(Color(NSColor.windowBackgroundColor).opacity(0.95))
         )
         .overlay(
             Capsule()
-                .stroke(Color.primary.opacity(0.15), lineWidth: 0.5)
+                .stroke(Color.primary.opacity(0.15), lineWidth: sizing.borderWidth)
         )
     }
 
     private func overlayIcon(color: Color, icon: String, iconSize: CGFloat) -> some View {
         Image(systemName: icon)
-            .font(.system(size: iconSize, weight: .bold))
+            .font(.system(size: iconSize * sizing.scale, weight: .bold))
             .foregroundColor(color)
-            .frame(width: 24, height: 24)
+            .frame(width: sizing.buttonSize, height: sizing.buttonSize)
     }
 }

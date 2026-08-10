@@ -17,6 +17,7 @@ enum SettingsDefaults {
         static let showZoomButton = "showZoomButton"
 
         static let overlayTheme = "overlayTheme"
+        static let overlayButtonScale = "overlayButtonScale"
 
         static let updateDuration = "updateDuration"
         static let mouseUpdateDuration = "mouseUpdateDuration"
@@ -39,6 +40,7 @@ enum SettingsDefaults {
     static let showZoomButton: Bool = true
 
     static let overlayTheme: OverlayTheme = .default
+    static let overlayButtonScale: Double = 1.0
 
     static let updateDuration: Double = 0.25
     static let mouseUpdateDuration: Double = 0.1
