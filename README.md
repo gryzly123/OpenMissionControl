@@ -17,6 +17,9 @@
   - **Close**: `⌘W`
   - **Minimize**: `⌘M`
   - **Maximize/Zoom**: `⌘F`
+- **Mouse Shortcuts**: Hover over a window and assign an action to either mouse shortcut:
+  - **Right-click**: Minimize, Maximize, Close, Quit, or None.
+  - **Middle-click**: Minimize, Maximize, Close, Quit, or None.
 
 ## Installation & Usage
 
