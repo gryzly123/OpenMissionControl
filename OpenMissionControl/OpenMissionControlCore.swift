@@ -10,8 +10,8 @@ import ApplicationServices
 import Combine
 import CoreGraphics
 import Foundation
-import os
 import SwiftUI
+import os
 
 @_silgen_name("CoreDockSendNotification")
 func CoreDockSendNotification(_ notification: CFString, _ unknown: Int32) -> CGError
@@ -52,15 +52,6 @@ enum Instigator: Int, CaseIterable, DisplayNameable {
     }
 }
 
-enum KeyboardKey: CGKeyCode {
-    case returnKey = 36
-    case keypadEnter = 76
-    case quit = 12
-    case close = 13
-    case minimize = 46
-    case maximize = 3
-}
-
 final class OpenMissionControlCore: ObservableObject {
     static let shared = OpenMissionControlCore()
     private let logger = Logger(
@@ -89,7 +80,7 @@ final class OpenMissionControlCore: ObservableObject {
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
         WindowAction =
-        SettingsDefaults.middleClickAction
+            SettingsDefaults.middleClickAction
 
     // MARK: - Lifecycle
 
@@ -126,7 +117,8 @@ final class OpenMissionControlCore: ObservableObject {
         InputEventMonitor.shared.setClickHandler { [weak self] location, button in
             guard let self = self else { return true }
 
-            self.logger.debug("Mouse clicked at: \(location.x), \(location.y) (button: \(button.rawValue))")
+            self.logger.debug(
+                "Mouse clicked at: \(location.x), \(location.y) (button: \(button.rawValue))")
             return self.handleMouseClick(at: location, with: button)
         }
         InputEventMonitor.shared.setMoveHandler { [weak self] location in
@@ -200,11 +192,14 @@ final class OpenMissionControlCore: ObservableObject {
 
         if let rect = overlayRect, rect.contains(location) {
             if button == .left {
-                logger.debug("Captured left click inside overlayRect at (\(location.x), \(location.y)).")
+                logger.debug(
+                    "Captured left click inside overlayRect at (\(location.x), \(location.y)).")
                 handleOverlayClick(at: location)
                 return false
             } else {
-                logger.debug("Captured non-left click inside overlayRect at (\(location.x), \(location.y)), skipping.")
+                logger.debug(
+                    "Captured non-left click inside overlayRect at (\(location.x), \(location.y)), skipping."
+                )
                 return true
             }
         }
@@ -212,19 +207,24 @@ final class OpenMissionControlCore: ObservableObject {
         if let window = hoveredWindow {
             switch button {
             case .left:
-                logger.debug("Captured left click on hovered window at (\(location.x), \(location.y)).")
+                logger.debug(
+                    "Captured left click on hovered window at (\(location.x), \(location.y)).")
                 hideOverlay()
                 return true
             case .right:
-                logger.debug("Captured right click on hovered window at (\(location.x), \(location.y)).")
+                logger.debug(
+                    "Captured right click on hovered window at (\(location.x), \(location.y)).")
                 performWindowAction(window: window, action: rightClickAction, instigator: .mouse)
                 return rightClickAction == .none
             case .center:
-                logger.debug("Captured middle click on hovered window at (\(location.x), \(location.y)).")
+                logger.debug(
+                    "Captured middle click on hovered window at (\(location.x), \(location.y)).")
                 performWindowAction(window: window, action: middleClickAction, instigator: .mouse)
                 return middleClickAction == .none
             default:
-                logger.debug("Captured non-default click (id \(button.rawValue)) on hovered window at (\(location.x), \(location.y)), skipping.")
+                logger.debug(
+                    "Captured non-default click (id \(button.rawValue)) on hovered window at (\(location.x), \(location.y)), skipping."
+                )
                 return true
             }
         }
@@ -241,9 +241,11 @@ final class OpenMissionControlCore: ObservableObject {
     private func handleKeyPress(flags: CGEventFlags, keyCode: CGKeyCode) -> Bool {
         guard isOverlayShown else { return true }
 
-        let isReturnKey = keyCode == KeyboardKey.returnKey.rawValue
+        let isReturnKey =
+            keyCode == KeyboardKey.return.rawValue
             || keyCode == KeyboardKey.keypadEnter.rawValue
-        let hasActionModifier = flags.contains(.maskCommand) || flags.contains(.maskControl)
+        let hasActionModifier =
+            flags.contains(.maskCommand) || flags.contains(.maskControl)
             || flags.contains(.maskAlternate) || flags.contains(.maskShift)
 
         if shortcutActivateWindow, isReturnKey, !hasActionModifier {
@@ -259,22 +261,22 @@ final class OpenMissionControlCore: ObservableObject {
         guard flags.contains(.maskCommand) else { return true }
 
         switch KeyboardKey(rawValue: keyCode) {
-        case .quit: // Q
+        case .q:
             if shortcutQuit {
                 performWindowAction(window: window, action: .quit, instigator: .keyboard)
                 return false
             }
-        case .close: // W
+        case .w:
             if shortcutClose {
                 performWindowAction(window: window, action: .close, instigator: .keyboard)
                 return false
             }
-        case .minimize: // M
+        case .m:
             if shortcutMinimize {
                 performWindowAction(window: window, action: .minimize, instigator: .keyboard)
                 return false
             }
-        case .maximize: // F
+        case .f:
             if shortcutMaximize {
                 performWindowAction(window: window, action: .zoom, instigator: .keyboard)
                 return false
@@ -375,10 +377,10 @@ final class OpenMissionControlCore: ObservableObject {
             // Find window under mouse
             for windowInfo in windows {
                 guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: CGFloat],
-                      let x = boundsDict["X"],
-                      let y = boundsDict["Y"],
-                      let width = boundsDict["Width"],
-                      let height = boundsDict["Height"]
+                    let x = boundsDict["X"],
+                    let y = boundsDict["Y"],
+                    let width = boundsDict["Width"],
+                    let height = boundsDict["Height"]
                 else {
                     continue
                 }
@@ -395,10 +397,10 @@ final class OpenMissionControlCore: ObservableObject {
 
                     let showQuit =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton)
-                            as? Bool ?? SettingsDefaults.showQuitButton
+                        as? Bool ?? SettingsDefaults.showQuitButton
                     let showClose =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showCloseButton)
-                            as? Bool ?? SettingsDefaults.showCloseButton
+                        as? Bool ?? SettingsDefaults.showCloseButton
                     let showMinimize =
                         UserDefaults.standard.object(
                             forKey: SettingsDefaults.Key.showMinimizeButton
@@ -406,7 +408,7 @@ final class OpenMissionControlCore: ObservableObject {
                         ?? SettingsDefaults.showMinimizeButton
                     let showZoom =
                         UserDefaults.standard.object(forKey: SettingsDefaults.Key.showZoomButton)
-                            as? Bool ?? SettingsDefaults.showZoomButton
+                        as? Bool ?? SettingsDefaults.showZoomButton
                     let buttonCount = [showQuit, showClose, showMinimize, showZoom].filter { $0 }
                         .count
                     let overlayWidth = sizing.width(buttonCount: buttonCount)
@@ -442,16 +444,16 @@ final class OpenMissionControlCore: ObservableObject {
 
         let showQuit =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showQuitButton) as? Bool
-                ?? SettingsDefaults.showQuitButton
+            ?? SettingsDefaults.showQuitButton
         let showClose =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showCloseButton) as? Bool
-                ?? SettingsDefaults.showCloseButton
+            ?? SettingsDefaults.showCloseButton
         let showMinimize =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showMinimizeButton) as? Bool
-                ?? SettingsDefaults.showMinimizeButton
+            ?? SettingsDefaults.showMinimizeButton
         let showZoom =
             UserDefaults.standard.object(forKey: SettingsDefaults.Key.showZoomButton) as? Bool
-                ?? SettingsDefaults.showZoomButton
+            ?? SettingsDefaults.showZoomButton
 
         if showQuit {
             if localX >= currentX, localX <= currentX + sizing.buttonSize {
@@ -482,7 +484,9 @@ final class OpenMissionControlCore: ObservableObject {
         }
     }
 
-    private func performWindowAction(window: [String: Any], action: WindowAction, instigator: Instigator) {
+    private func performWindowAction(
+        window: [String: Any], action: WindowAction, instigator: Instigator
+    ) {
         let windowName = window[kCGWindowName as String] as? String ?? ""
 
         switch action {
@@ -507,7 +511,7 @@ final class OpenMissionControlCore: ObservableObject {
 
     private func performOSWindowAction(window: [String: Any], action: String) {
         guard let pid = window[kCGWindowOwnerPID as String] as? pid_t,
-              let windowID = window[kCGWindowNumber as String] as? CGWindowID
+            let windowID = window[kCGWindowNumber as String] as? CGWindowID
         else {
             logger.error("Failed to get PID or WindowID for window: \(window)")
             return
@@ -564,7 +568,8 @@ final class OpenMissionControlCore: ObservableObject {
         if windowFetchTimer == nil {
             fetchWindows()
 
-            windowFetchTimer = Timer.scheduledTimer(withTimeInterval: updateDuration, repeats: true) { [weak self] _ in
+            windowFetchTimer = Timer.scheduledTimer(withTimeInterval: updateDuration, repeats: true)
+            { [weak self] _ in
                 self?.fetchWindows()
             }
         }

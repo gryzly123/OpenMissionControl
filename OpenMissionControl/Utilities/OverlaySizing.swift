@@ -2,11 +2,13 @@
 //  OverlaySizing.swift
 //  OpenMissionControl
 //
+//  Created by Ckyac on 10/8/2026.
+//
 
 import Foundation
 
 struct OverlaySizing {
-    static let scaleRange: ClosedRange<Double> = 0.5 ... 1.5
+    static let scaleRange: ClosedRange<Double> = 0.5...1.5
     static let scaleStep: Double = 0.05
 
     let scale: CGFloat

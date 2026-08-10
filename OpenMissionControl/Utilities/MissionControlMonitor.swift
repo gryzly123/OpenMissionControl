@@ -63,7 +63,8 @@ class MissionControlMonitor {
         guard let axObserver = axObserver, let axUiElement = axUiElement else { return }
 
         for notification in MissionControlState.allCases {
-            AXObserverAddNotification(axObserver, axUiElement, notification.rawValue as CFString, selfPtr)
+            AXObserverAddNotification(
+                axObserver, axUiElement, notification.rawValue as CFString, selfPtr)
         }
 
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(axObserver), .commonModes)
@@ -79,7 +80,8 @@ class MissionControlMonitor {
             for notification in MissionControlState.allCases {
                 AXObserverRemoveNotification(observer, element, notification.rawValue as CFString)
             }
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
+            CFRunLoopRemoveSource(
+                CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
         }
 
         axObserver = nil

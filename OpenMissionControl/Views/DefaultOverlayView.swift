@@ -37,7 +37,8 @@ struct DefaultOverlayView: View {
             }
 
             if showZoomButton {
-                trafficLight(color: .green, icon: "arrow.up.backward.and.arrow.down.forward", iconSize: 10)
+                trafficLight(
+                    color: .green, icon: "arrow.up.backward.and.arrow.down.forward", iconSize: 10)
             }
         }
         .padding(.horizontal, sizing.horizontalPadding)
@@ -55,11 +56,13 @@ struct DefaultOverlayView: View {
     private func trafficLight(color: Color, icon: String, iconSize: CGFloat) -> some View {
         ZStack {
             Circle()
-                .fill(LinearGradient(
-                    colors: [color.opacity(0.85), color],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
+                .fill(
+                    LinearGradient(
+                        colors: [color.opacity(0.85), color],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .frame(width: sizing.buttonSize, height: sizing.buttonSize)
                 .shadow(
                     color: color.opacity(0.4), radius: sizing.shadowRadius,
@@ -67,7 +70,9 @@ struct DefaultOverlayView: View {
                 )
             Image(systemName: icon)
                 .font(.system(size: iconSize * sizing.scale, weight: .bold))
-                .foregroundColor((openMissionControlCore.isOverlayHovered || isPreview) ? Color.black.opacity(0.45) : .clear)
+                .foregroundColor(
+                    (openMissionControlCore.isOverlayHovered || isPreview)
+                        ? Color.black.opacity(0.45) : .clear)
         }
     }
 }

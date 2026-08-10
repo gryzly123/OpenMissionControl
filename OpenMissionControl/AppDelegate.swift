@@ -13,7 +13,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_: Notification) {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        let options =
+            [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
 
         OpenMissionControlCore.shared.start()
@@ -27,23 +28,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
-        let appName = Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String ?? "Open Mission Control"
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let appName =
+            Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String ?? "Open Mission Control"
+        let appVersion =
+            Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let appBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "rectangle.3.group.fill", accessibilityDescription: appName)
+            button.image = NSImage(
+                systemSymbolName: "rectangle.3.group.fill", accessibilityDescription: appName)
         }
 
         let menu = NSMenu()
 
-        let titleItem = NSMenuItem(title: "\(appName) v\(appVersion) (\(appBuild))", action: nil, keyEquivalent: "")
+        let titleItem = NSMenuItem(
+            title: "\(appName) v\(appVersion) (\(appBuild))", action: nil, keyEquivalent: "")
         titleItem.isEnabled = false
         menu.addItem(titleItem)
 
         menu.addItem(.separator())
 
-        let settingsItem = NSMenuItem(title: "Settings", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(
+            title: "Settings", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
 

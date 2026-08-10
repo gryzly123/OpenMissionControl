@@ -36,7 +36,8 @@ struct ColoredMinimalOverlayView: View {
             }
 
             if showZoomButton {
-                overlayIcon(color: .green, icon: "arrow.up.backward.and.arrow.down.forward", iconSize: 12)
+                overlayIcon(
+                    color: .green, icon: "arrow.up.backward.and.arrow.down.forward", iconSize: 12)
             }
         }
         .padding(.horizontal, sizing.horizontalPadding)

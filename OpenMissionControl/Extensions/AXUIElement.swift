@@ -26,7 +26,8 @@ extension AXUIElement {
 
     func attribute<T>(_ key: String, _ _: T.Type) throws -> T? {
         var value: AnyObject?
-        return try axCallWhichCanThrow(AXUIElementCopyAttributeValue(self, key as CFString, &value), &value) as? T
+        return try axCallWhichCanThrow(
+            AXUIElementCopyAttributeValue(self, key as CFString, &value), &value) as? T
     }
 
     private func value<T>(_ key: String, _ target: T, _ type: AXValueType) throws -> T? {

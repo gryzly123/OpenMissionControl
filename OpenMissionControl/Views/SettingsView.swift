@@ -61,7 +61,7 @@ struct AccessibilityRow: View {
             if !isTrusted {
                 Button("Grant") {
                     let options: NSDictionary = [
-                        kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true,
+                        kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
                     ]
                     let accessEnabled = AXIsProcessTrustedWithOptions(options)
                     isTrusted = accessEnabled
@@ -93,7 +93,8 @@ struct SettingToggleRow: View {
     @Binding var isOn: Bool
 
     init(
-        icon: String? = nil, iconColor: LinearGradient? = nil, title: String, subtitle: String? = nil,
+        icon: String? = nil, iconColor: LinearGradient? = nil, title: String,
+        subtitle: String? = nil,
         isOn: Binding<Bool>
     ) {
         self.icon = icon
@@ -300,7 +301,7 @@ struct SettingsView: View {
                                     .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
                             }
-                            Slider(value: $updateDuration, in: 0.05 ... 2.0, step: 0.05)
+                            Slider(value: $updateDuration, in: 0.05...2.0, step: 0.05)
                                 .controlSize(.small)
                             Text("The interval for polling window state.")
                                 .font(.system(size: 11))
@@ -320,7 +321,7 @@ struct SettingsView: View {
                                     .font(.system(size: 11))
                                     .foregroundStyle(.secondary)
                             }
-                            Slider(value: $mouseUpdateDuration, in: 0.05 ... 1.0, step: 0.05)
+                            Slider(value: $mouseUpdateDuration, in: 0.05...1.0, step: 0.05)
                                 .controlSize(.small)
                             Text("The interval for polling mouse state.")
                                 .font(.system(size: 11))
@@ -507,7 +508,7 @@ struct SettingsView: View {
                                     "CFBundleShortVersionString"
                                 ] as? String,
                                     let build = Bundle.main.infoDictionary?["CFBundleVersion"]
-                                    as? String
+                                        as? String
                                 {
                                     Text("Version \(version) (\(build))")
                                         .font(.system(size: 11))

@@ -8,8 +8,8 @@
 import AppKit
 import CoreGraphics
 import Foundation
-import os
 import SwiftUI
+import os
 
 /// Monitors global input events and notifies registered handlers on click, move, and key events.
 class InputEventMonitor {
@@ -84,20 +84,24 @@ class InputEventMonitor {
     // MARK: - Private: Input Monitoring
 
     private func startInputMonitoring() {
-        let eventMask = (1 << CGEventType.leftMouseDown.rawValue)
+        let eventMask =
+            (1 << CGEventType.leftMouseDown.rawValue)
             | (1 << CGEventType.rightMouseDown.rawValue)
             | (1 << CGEventType.otherMouseDown.rawValue)
             | (1 << CGEventType.keyDown.rawValue)
 
-        guard let tap = CGEvent.tapCreate(
-            tap: .cghidEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: CGEventMask(eventMask),
-            callback: inputEventMonitorCallback,
-            userInfo: nil
-        ) else {
-            logger.error("Failed to create input event tap. Please grant Accessibility permissions.")
+        guard
+            let tap = CGEvent.tapCreate(
+                tap: .cghidEventTap,
+                place: .headInsertEventTap,
+                options: .defaultTap,
+                eventsOfInterest: CGEventMask(eventMask),
+                callback: inputEventMonitorCallback,
+                userInfo: nil
+            )
+        else {
+            logger.error(
+                "Failed to create input event tap. Please grant Accessibility permissions.")
             return
         }
 
@@ -210,7 +214,9 @@ private func inputEventMonitorCallback(
         }
     } else if type == .otherMouseDown {
         let location = event.location
-        if let button = CGMouseButton(rawValue: UInt32(event.getIntegerValueField(.mouseEventButtonNumber))) {
+        if let button = CGMouseButton(
+            rawValue: UInt32(event.getIntegerValueField(.mouseEventButtonNumber)))
+        {
             let passDown = InputEventMonitor.shared.handleClick(at: location, with: button)
             if !passDown {
                 return nil
