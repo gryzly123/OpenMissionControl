@@ -248,6 +248,12 @@ struct SettingsView: View {
         SettingsDefaults.rightClickAction
     @AppStorage(SettingsDefaults.Key.middleClickAction) private var middleClickAction:
         WindowAction = SettingsDefaults.middleClickAction
+    @AppStorage(SettingsDefaults.Key.showAppIcons) private var showAppIcons: Bool =
+        SettingsDefaults.showAppIcons
+    @AppStorage(SettingsDefaults.Key.iconOverlaySize) private var iconOverlaySize: Double =
+        SettingsDefaults.iconOverlaySize
+    @AppStorage(SettingsDefaults.Key.showIconOverlayShadow) private var showIconOverlayShadow:
+        Bool = SettingsDefaults.showIconOverlayShadow
 
     @State private var launchAtLogin: Bool = LaunchAtLoginManager.isEnabled
     private let logger = Logger(
@@ -490,6 +496,49 @@ struct SettingsView: View {
                         )
                     }
                 }
+
+                // MARK: Icon Overlay
+
+                VStack(alignment: .leading, spacing: 6) {
+                    sectionHeader("Icon Overlay")
+
+                    SettingsCard {
+                        SettingToggleRow(
+                            title: "App Icons",
+                            subtitle: "Show app icons above window thumbnails",
+                            isOn: $showAppIcons
+                        )
+                        .onChange(of: showAppIcons) { _ in
+                            OpenMissionControlCore.shared.refreshIconOverlayVisibility()
+                        }
+
+                        SettingToggleRow(
+                            title: "Icon Shadow",
+                            subtitle: "Show a soft shadow under app icons",
+                            isOn: $showIconOverlayShadow
+                        )
+
+                        if showAppIcons {
+                            SettingsDivider()
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Icon Size")
+                                        .font(.system(size: 13, weight: .medium))
+                                    Spacer()
+                                    Text("\(Int(iconOverlaySize)) pt")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Slider(value: $iconOverlaySize, in: 32 ... 128, step: 4)
+                                    .controlSize(.small)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                        }
+                    }
+                }
+
 
                 // MARK: About
 
