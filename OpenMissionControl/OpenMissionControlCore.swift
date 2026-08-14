@@ -38,6 +38,13 @@ enum WindowAction: Int, CaseIterable, DisplayNameable {
     }
 }
 
+enum WindowDragState: Int, CaseIterable {
+    case none = 0
+    case leftClickDownOnWindow = 1
+    case leftClickDraggingWindow = 2
+    case leftClickUpAfterDraggedWindow = 3
+}
+
 enum Instigator: Int, CaseIterable, DisplayNameable {
     case overlay
     case keyboard
@@ -120,6 +127,16 @@ final class OpenMissionControlCore: ObservableObject {
             self.logger.debug(
                 "Mouse clicked at: \(location.x), \(location.y) (button: \(button.rawValue))")
             return self.handleMouseClick(at: location, with: button)
+        }
+        InputEventMonitor.shared.setDragHandler { [weak self] location, button in
+            guard let self = self else { return }
+
+            self.handleMouseDrag(at: location, with: button)
+        }
+        InputEventMonitor.shared.setMouseUpHandler { [weak self] location, button in
+            guard let self = self else { return true }
+
+            return self.handleMouseUp(at: location, with: button)
         }
         InputEventMonitor.shared.setMoveHandler { [weak self] location in
             guard let self = self else { return }
@@ -209,7 +226,8 @@ final class OpenMissionControlCore: ObservableObject {
             case .left:
                 logger.debug(
                     "Captured left click on hovered window at (\(location.x), \(location.y)).")
-                hideOverlay()
+                windowDragState = .leftClickDownOnWindow
+                hideOverlay(keepInputMonitoring: true)
                 return true
             case .right:
                 logger.debug(
@@ -229,11 +247,37 @@ final class OpenMissionControlCore: ObservableObject {
             }
         }
 
+        hideOverlay()
         return true
     }
 
     private func handleMouseMove(to location: CGPoint) {
+        guard windowDragState == .none else { return }
+
         updateOverlay(at: location)
+    }
+
+    private func handleMouseDrag(at _: CGPoint, with button: CGMouseButton) {
+        guard button == .left, windowDragState == .leftClickDownOnWindow else { return }
+
+        logger.debug("Mouse started dragging the clicked window.")
+        windowDragState = .leftClickDraggingWindow
+    }
+
+    @discardableResult
+    private func handleMouseUp(at _: CGPoint, with button: CGMouseButton) -> Bool {
+        guard button == .left, windowDragState != .none else { return true }
+
+        let shouldRestoreOverlay = windowDragState == .leftClickDraggingWindow
+        if shouldRestoreOverlay, isOverlayShown {
+            logger.debug("Mouse released the dragged window, restoring overlay.")
+            windowDragState = .leftClickUpAfterDraggedWindow
+            recreateOverlay()
+        } else {
+            windowDragState = .none
+        }
+
+        return true
     }
 
     // MARK: - Key Event Handling
@@ -354,6 +398,7 @@ final class OpenMissionControlCore: ObservableObject {
     private var overlayWindow: NSWindow?
     private(set) var overlayRect: CGRect?
     private(set) var hoveredWindow: [String: Any]?
+    private var windowDragState: WindowDragState = .none
 
     @Published private(set) var isOverlayShown: Bool = false
     @Published private(set) var isOverlayHovered: Bool = false
@@ -591,17 +636,32 @@ final class OpenMissionControlCore: ObservableObject {
         // Start mouse monitoring when overlay is visible
         InputEventMonitor.shared.start()
 
-        // Do an initial overlay update with current mouse position
-        if let mouseLocation = CGEvent(source: nil)?.location {
-            updateOverlay(at: mouseLocation)
+        // Do an initial overlay update with current mouse position.
+        // (Skip the update after a window drag to ensure that the overlay doesn't
+        // get shown immediately at the coordinates where the drag ended, because
+        // this would result in rendering the overlay at invalid position.)
+        if windowDragState == .none {
+            if let mouseLocation = CGEvent(source: nil)?.location {
+                updateOverlay(at: mouseLocation)
+            }
+        }
+        else {
+            windowDragState = .none
         }
     }
 
-    func hideOverlay() {
+    func hideOverlay(keepInputMonitoring: Bool = false) {
         windowFetchTimer?.invalidate()
         windowFetchTimer = nil
         overlayWindow?.orderOut(nil)
         hoveredWindow = nil
+        isOverlayHovered = false
+
+        if keepInputMonitoring {
+            return
+        }
+
+        windowDragState = .none
         InputEventMonitor.shared.stop()
     }
 
