@@ -644,8 +644,7 @@ final class OpenMissionControlCore: ObservableObject {
             if let mouseLocation = CGEvent(source: nil)?.location {
                 updateOverlay(at: mouseLocation)
             }
-        }
-        else {
+        } else {
             windowDragState = .none
         }
     }
